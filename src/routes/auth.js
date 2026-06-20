@@ -24,7 +24,7 @@ const stateStore = new Map();
 // ── 1. RepuPilot user login via Google SSO ────────────────────────────────
 
 // The frontend handles Google One Tap / popup and sends the id_token here
-POST /api/auth/google/verify  (not an OAuth redirect — just token verification)
+// POST /api/auth/google/verify  (not an OAuth redirect — just token verification)
 router.post('/google/verify', async (req, res) => {
   try {
     const { idToken } = req.body;
