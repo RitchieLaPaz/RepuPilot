@@ -17,7 +17,15 @@ const reviewRoutes    = require('./routes/reviews');
 const app = express();
 
 // ── Security middleware ────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Explicitly remove CSP header — SPA uses inline scripts and onclick handlers
+app.use((req, res, next) => {
+  res.removeHeader('Content-Security-Policy');
+  res.removeHeader('X-Content-Security-Policy');
+  res.removeHeader('X-WebKit-CSP');
+  next();
+});
 app.use(cors({
   origin:      config.frontendUrl,
   credentials: true,
