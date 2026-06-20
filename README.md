@@ -1,5 +1,3 @@
-AI-driven, "agentic" marketing and online reputation management platform designed specifically for multi-location brands and local businesses
-
 # RepuPilot Backend — Railway Deployment Guide
 
 ## What this is
@@ -180,4 +178,3 @@ repupilot-backend/
 | FRONTEND_URL | ✅ | Your RepuPilot frontend URL |
 | ANTHROPIC_API_KEY | ✅ | For AI review drafts |
 | NODE_ENV | ✅ | Set to `production` on Railway |
-
