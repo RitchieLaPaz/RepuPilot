@@ -315,7 +315,7 @@ function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msal
 const S={
   tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
-  users:null,usersLoading:false,invites:null,userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
+  users:null,usersLoading:false,invites:null,userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
     {id:1,pf:'google',nm:'Sarah M.',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
     {id:2,pf:'yelp',nm:'James K.',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
@@ -755,11 +755,23 @@ function renderSettingsInner(){
               <span style="font-size:11px;color:var(--txt3);">Last login: ${lastLogin}</span>
             </div>
           </div>
-          ${isAdmin&&u.id!==currentUser?.id?`<div style="display:flex;gap:6px;">
+          ${isAdmin&&u.id!==currentUser?.id?`<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
             <select onchange="updateUserRole('${u.id}',this.value)" style="font-size:12px;padding:4px 8px;">
               <option value="member"${u.role==='member'?' selected':''}>Member</option>
               <option value="admin"${u.role==='admin'?' selected':''}>Admin</option>
             </select>
+            ${u.provider==='local'?`<button class="btn" style="font-size:11px;padding:3px 10px;white-space:nowrap;" onclick="S.resetPw={uid:'${u.id}',pw:'',loading:false,error:'',ok:false};renderSettings()"><i class="ti ti-key" style="font-size:11px;"></i> Reset password</button>`:''}
+          </div>`:''}
+          ${S.resetPw.uid===u.id?`
+          <div style="margin-top:10px;padding:10px;background:var(--bg2);border-radius:var(--r-md);border:0.5px solid var(--brd);">
+            <div style="font-size:12px;font-weight:500;margin-bottom:8px;"><i class="ti ti-key"></i> Reset password for ${u.name}</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="password" placeholder="New password (min 8 chars)" id="rp-pw-${u.id}" style="flex:1;font-size:12px;padding:6px 10px;" oninput="S.resetPw.pw=this.value">
+              <button class="btn p" style="font-size:12px;padding:6px 12px;white-space:nowrap;" onclick="adminResetPassword('${u.id}')" ${S.resetPw.loading?'disabled':''}><i class="ti ti-${S.resetPw.loading?'refresh spin':'check'}"></i> ${S.resetPw.loading?'Saving…':'Save'}</button>
+              <button class="btn" style="font-size:12px;padding:6px 10px;" onclick="S.resetPw={uid:null,pw:'',loading:false,error:'',ok:false};renderSettings()">Cancel</button>
+            </div>
+            ${S.resetPw.error?`<div style="font-size:11px;color:var(--dang-fg);margin-top:6px;">${S.resetPw.error}</div>`:''}
+            ${S.resetPw.ok?`<div style="font-size:11px;color:var(--succ-fg);margin-top:6px;"><i class="ti ti-check"></i> Password reset!</div>`:''}
           </div>`:''}
         </div>
       </div>`;
@@ -1048,27 +1060,18 @@ function render(){
           <div style="padding:8px;">
             <div style="font-size:10px;font-weight:500;color:var(--txt3);letter-spacing:.5px;padding:4px 8px 6px;">ACCOUNT</div>
             ${currentUser.provider==='local'?`
-            <!-- Change password form -->
             <div style="padding:8px;border-radius:var(--r-md);background:var(--bg2);margin-bottom:4px;">
               <div style="font-size:12px;font-weight:500;margin-bottom:10px;"><i class="ti ti-lock" style="font-size:12px;margin-right:5px;"></i>Change password</div>
-              <input type="password" placeholder="Current password" value="${S.pwForm.current}"
-                oninput="S.pwForm.current=this.value"
-                style="margin-bottom:6px;font-size:12px;padding:6px 10px;">
-              <input type="password" placeholder="New password (min 8 chars)" value="${S.pwForm.next}"
-                oninput="S.pwForm.next=this.value"
-                style="margin-bottom:6px;font-size:12px;padding:6px 10px;">
-              <input type="password" placeholder="Confirm new password" value="${S.pwForm.confirm}"
-                oninput="S.pwForm.confirm=this.value"
-                style="margin-bottom:8px;font-size:12px;padding:6px 10px;">
+              <input type="password" placeholder="Current password" value="${S.pwForm.current}" oninput="S.pwForm.current=this.value" style="margin-bottom:6px;font-size:12px;padding:6px 10px;">
+              <input type="password" placeholder="New password (min 8 chars)" value="${S.pwForm.next}" oninput="S.pwForm.next=this.value" style="margin-bottom:6px;font-size:12px;padding:6px 10px;">
+              <input type="password" placeholder="Confirm new password" value="${S.pwForm.confirm}" oninput="S.pwForm.confirm=this.value" style="margin-bottom:8px;font-size:12px;padding:6px 10px;">
               ${S.pwForm.error?`<div style="font-size:11px;color:var(--dang-fg);margin-bottom:6px;">${S.pwForm.error}</div>`:''}
               ${S.pwForm.ok?`<div style="font-size:11px;color:var(--succ-fg);margin-bottom:6px;"><i class="ti ti-check"></i> Password updated!</div>`:''}
               <button class="btn p" style="width:100%;justify-content:center;font-size:12px;padding:7px;" onclick="changePassword()" ${S.pwForm.loading?'disabled':''}>
                 <i class="ti ti-${S.pwForm.loading?'refresh spin':'check'}"></i> ${S.pwForm.loading?'Updating…':'Update password'}
               </button>
             </div>`:`
-            <div style="padding:6px 8px;font-size:12px;color:var(--txt2);border-radius:var(--r-md);">
-              <i class="ti ti-brand-google" style="font-size:12px;margin-right:5px;"></i>Password managed by Google
-            </div>`}
+            <div style="padding:6px 8px;font-size:12px;color:var(--txt2);"><i class="ti ti-brand-google" style="font-size:12px;margin-right:4px;"></i>Password managed by Google</div>`}
           </div>
           <!-- Sign out -->
           <div style="padding:8px;border-top:0.5px solid var(--brd);">
@@ -1120,6 +1123,19 @@ window.changePassword=async()=>{
     S.pwForm={current:'',next:'',confirm:'',loading:false,error:'',ok:true};render();
     setTimeout(()=>{S.pwForm.ok=false;render();},3000);
   }catch(e){S.pwForm.error='Network error';S.pwForm.loading=false;render();}
+};
+window.adminResetPassword=async uid=>{
+  const pw=document.getElementById('rp-pw-'+uid)?.value||S.resetPw.pw;
+  S.resetPw.error='';
+  if(!pw||pw.length<8){S.resetPw.error='Password must be at least 8 characters';renderSettings();return;}
+  S.resetPw.loading=true;renderSettings();
+  try{
+    const res=await fetch('/api/auth/users/'+uid+'/reset-password',{method:'POST',headers:authHeaders(),body:JSON.stringify({password:pw})});
+    const data=await res.json();
+    if(!res.ok){S.resetPw.error=data.error||'Failed to reset password';S.resetPw.loading=false;renderSettings();return;}
+    S.resetPw={uid,pw:'',loading:false,error:'',ok:true};renderSettings();
+    setTimeout(()=>{S.resetPw={uid:null,pw:'',loading:false,error:'',ok:false};renderSettings();},3000);
+  }catch(e){S.resetPw.error='Network error';S.resetPw.loading=false;renderSettings();}
 };
 window.updateUserRole=async(uid,role)=>{
   try{
