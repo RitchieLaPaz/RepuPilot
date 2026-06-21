@@ -270,6 +270,33 @@ router.patch('/users/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// ── Change password (local accounts only) ────────────────────────────────
+router.post('/local/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
+    if (newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+
+    const { rows } = await db.query('SELECT * FROM users WHERE id = $1', [req.user.userId]);
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+    const user = rows[0];
+
+    if (!user.password_hash) return res.status(400).json({ error: 'This account uses Google sign-in — no password to change' });
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.userId]);
+
+    logger.info('Password changed', { userId: req.user.userId });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Change password error', { err: err.message });
+    res.status(500).json({ error: 'Failed to update password' });
+  }
+});
+
 // ── Current user ──────────────────────────────────────────────────────────
 router.get('/me', authMiddleware, async (req, res) => {
   try {
