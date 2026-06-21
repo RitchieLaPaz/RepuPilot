@@ -44,6 +44,9 @@ module.exports = {
     apiKey: process.env.ANTHROPIC_API_KEY || '',
   },
 
-  // Token refresh triggers proactive refresh when expiry is within this window
+  // Comma-separated list of allowed Google email domains for SSO
+  // e.g. 'eaze.com,greendragon.com' — empty means any Google account is allowed
+  allowedDomains: process.env.ALLOWED_DOMAINS || '',
+
   tokenRefreshWindowHours: 48,
 };
