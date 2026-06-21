@@ -126,3 +126,18 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by    UUID REFERENCES users(i
 
 -- Index for local login lookups
 CREATE INDEX IF NOT EXISTS idx_users_email_provider ON users(email, provider);
+
+-- ── Invitations ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS invitations (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email       TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  role        TEXT NOT NULL DEFAULT 'member',
+  token       TEXT UNIQUE NOT NULL,
+  invited_by  UUID REFERENCES users(id),
+  expires_at  TIMESTAMPTZ NOT NULL,
+  accepted_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
