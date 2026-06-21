@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RepuPilot</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
+<script>
+const SSO_CONFIG = {
+  google:    { clientId: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com' },
+  microsoft: { clientId: 'YOUR_MICROSOFT_CLIENT_ID', tenantId: 'YOUR_TENANT_ID' }
+};
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+:root{
+  --bg:#fff;--bg2:#f6f6f4;--bg3:#efefec;
+  --txt:#1a1a18;--txt2:#6b6b66;--txt3:#9c9c96;
+  --brd:rgba(0,0,0,.12);--brd2:rgba(0,0,0,.22);
+  --info-bg:#e6f1fb;--info-fg:#185fa5;
+  --warn-bg:#faeeda;--warn-fg:#854f0b;
+  --succ-bg:#eaf3de;--succ-fg:#3b6d11;
+  --dang-bg:#fcebeb;--dang-fg:#a32d2d;
+  --purple-bg:#eeedfe;--purple-fg:#534ab7;
+  --amber:#BA7517;--r-md:8px;--r-lg:12px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--bg2:#242422;--bg3:#2c2c2a;
+  --txt:#f0f0ec;--txt2:#a0a09a;--txt3:#6b6b66;
+  --brd:rgba(255,255,255,.12);--brd2:rgba(255,255,255,.22);
+  --info-bg:#042c53;--info-fg:#85b7eb;--warn-bg:#412402;--warn-fg:#fac775;
+  --succ-bg:#173404;--succ-fg:#c0dd97;--dang-bg:#501313;--dang-fg:#f09595;
+  --purple-bg:#26215c;--purple-fg:#afa9ec;
+}}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg3);color:var(--txt);font-size:15px;line-height:1.6;}
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-card{background:var(--bg);border:0.5px solid var(--brd);border-radius:16px;padding:44px 40px;width:100%;max-width:440px;}
+.auth-logo-wrap{text-align:center;margin-bottom:20px;}
+.auth-logo{width:52px;height:52px;background:var(--txt);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--bg);font-size:22px;}
+.auth-logo-img{height:52px;max-width:200px;object-fit:contain;border-radius:8px;}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:18px 0;}
+.auth-divider span{font-size:12px;color:var(--txt3);white-space:nowrap;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:0.5px;background:var(--brd);}
+.sso-btn{width:100%;padding:11px 16px;border-radius:var(--r-md);font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:inherit;margin-bottom:10px;border:none;}
+.sso-btn:hover{opacity:.88;}.sso-btn.google{background:#fff;color:#3c4043;border:1px solid #dadce0;}
+@media(prefers-color-scheme:dark){.sso-btn.google{background:#303030;color:#e8e8e8;border-color:#555;}}
+.sso-btn.microsoft{background:#0078d4;color:#fff;}
+.sso-btn.demo{background:none;border:0.5px solid var(--brd2);color:var(--txt2);font-weight:400;font-size:13px;}
+.sso-btn.demo:hover{background:var(--bg2);}
+.auth-err{background:var(--dang-bg);color:var(--dang-fg);font-size:13px;padding:10px 14px;border-radius:var(--r-md);margin-bottom:16px;display:none;text-align:left;}
+.auth-loading{display:none;flex-direction:column;align-items:center;gap:12px;padding:24px 0;}
+.spinner{width:28px;height:28px;border:2px solid var(--brd);border-top-color:var(--txt);border-radius:50%;animation:spin .7s linear infinite;}
+.auth-legal{font-size:11px;color:var(--txt3);margin-top:20px;line-height:1.6;text-align:center;}
+#main-app{display:none;}
+#app{max-width:840px;margin:0 auto;padding:24px 20px;}
+.tabs{display:flex;border-bottom:0.5px solid var(--brd);margin-bottom:24px;overflow-x:auto;}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:14px;color:var(--txt2);cursor:pointer;font-family:inherit;margin-bottom:-1px;white-space:nowrap;}
+.tab.on{color:var(--txt);border-bottom-color:var(--txt);font-weight:500;}
+.tab:hover:not(.on){color:var(--txt);}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.pill{background:none;border:0.5px solid var(--brd);padding:4px 14px;border-radius:20px;font-size:12px;color:var(--txt2);cursor:pointer;font-family:inherit;}
+.pill.on{background:var(--txt);color:var(--bg);border-color:transparent;}
+.pill:hover:not(.on){border-color:var(--brd2);color:var(--txt);}
+.btn{background:none;border:0.5px solid var(--brd2);padding:7px 16px;border-radius:var(--r-md);font-size:13px;color:var(--txt);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;}
+.btn:hover:not([disabled]){background:var(--bg2);}
+.btn.p{background:var(--txt);color:var(--bg);border:none;}
+.btn.p:hover:not([disabled]){opacity:.85;}
+.btn.d{color:var(--dang-fg);border-color:var(--dang-fg);}
+.btn.d:hover:not([disabled]){background:var(--dang-bg);}
+.btn[disabled]{opacity:.4;cursor:default;}
+.card{background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:12px;}
+.metric{background:var(--bg2);border-radius:var(--r-md);padding:14px 16px;}
+.badge{font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--r-md);display:inline-block;}
+textarea{width:100%;padding:10px 12px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg2);color:var(--txt);resize:vertical;font-family:inherit;line-height:1.6;margin-top:6px;}
+input[type="text"]{width:100%;padding:8px 12px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg);color:var(--txt);font-family:inherit;}
+select{padding:7px 10px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg);color:var(--txt);cursor:pointer;font-family:inherit;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{display:inline-block;animation:spin .8s linear infinite;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.sect-label{font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin-bottom:12px;}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--info-fg);flex-shrink:0;overflow:hidden;}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.bar-wrap{flex:1;background:var(--bg2);border-radius:4px;height:5px;overflow:hidden;}
+.bar{height:100%;border-radius:4px;}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--bg2);border:0.5px solid var(--brd);border-radius:20px;padding:4px 12px 4px 4px;}
+.provider-tag{font-size:10px;font-weight:500;padding:1px 5px;border-radius:3px;}
+.bq-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--txt);color:var(--bg);border-radius:50%;font-size:11px;font-weight:500;flex-shrink:0;margin-right:8px;}
+.bq-label{font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin-bottom:6px;}
+.logo-drop{display:block;border:0.5px dashed var(--brd2);border-radius:var(--r-lg);padding:20px;text-align:center;cursor:pointer;background:var(--bg2);transition:border-color .15s;}
+.logo-drop:hover{border-color:var(--txt2);}
+.brand-preview{background:var(--bg2);border-radius:var(--r-md);padding:14px 16px;font-size:13px;line-height:1.8;}
+/* listings */
+.listings-layout{display:flex;gap:16px;}
+.folder-panel{width:248px;flex-shrink:0;}
+@media(max-width:640px){.listings-layout{flex-direction:column;}.folder-panel{width:100%;}}
+.fi{display:flex;align-items:center;padding:5px 8px;border-radius:var(--r-md);cursor:pointer;}
+.fi:hover{background:var(--bg2);}.fi.fi-sel{background:var(--info-bg);}
+.fi-arr{background:none;border:none;cursor:pointer;color:var(--txt3);padding:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fi-arr.invisible{visibility:hidden;}
+.fi-icon{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin:0 6px;}
+.fi-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fi-cnt{font-size:11px;color:var(--txt3);margin-left:4px;flex-shrink:0;}
+.fi-del{background:none;border:none;cursor:pointer;color:var(--txt3);padding:2px;margin-left:2px;flex-shrink:0;}
+.fi-del:hover{color:var(--dang-fg);}
+.fi-edit{background:none;border:none;cursor:pointer;color:var(--txt3);padding:2px;flex-shrink:0;}
+.fi-edit:hover{color:var(--info-fg);}
+/* listing cards */
+.listing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;}
+.lc{background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-lg);overflow:hidden;}
+.lc-header{padding:14px 16px 10px;border-bottom:0.5px solid var(--brd);}
+.lc-body{padding:12px 16px;}
+.lc-footer{padding:8px 16px;background:var(--bg2);display:flex;align-items:center;justify-content:space-between;border-top:0.5px solid var(--brd);}
+.lc-plat{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.conn-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+/* add location */
+.add-tabs{display:flex;gap:0;border:0.5px solid var(--brd);border-radius:var(--r-md);overflow:hidden;margin-bottom:16px;width:fit-content;}
+.add-tab{background:none;border:none;padding:7px 18px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--txt2);}
+.add-tab.on{background:var(--txt);color:var(--bg);font-weight:500;}
+.import-location-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:var(--r-md);cursor:pointer;}
+.import-location-item:hover{background:var(--bg2);}
+.import-location-item.selected{background:var(--info-bg);}
+.report-metric{background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-lg);padding:16px 20px;}
+.report-metric-val{font-size:28px;font-weight:500;line-height:1.2;margin-bottom:4px;}
+.report-metric-label{font-size:12px;color:var(--txt2);}
+.report-metric-delta{font-size:12px;font-weight:500;margin-top:4px;}
+.report-chart-card{background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-lg);padding:16px;}
+.report-chart-title{font-size:13px;font-weight:500;margin-bottom:14px;color:var(--txt);}
+.report-table{width:100%;border-collapse:collapse;font-size:13px;}
+.report-table th{text-align:left;font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.4px;padding:8px 12px;border-bottom:0.5px solid var(--brd);}
+.report-table td{padding:9px 12px;border-bottom:0.5px solid var(--brd);}
+.report-table tr:last-child td{border-bottom:none;}
+.report-table tbody tr:hover td{background:var(--bg2);}
+.insight-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--brd);}
+.insight-item:last-child{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo-wrap" id="auth-logo-area"><div class="auth-logo"><i class="ti ti-plane-tilt"></i></div></div>
+    <div style="text-align:center;">
+      <div style="font-size:20px;font-weight:500;margin-bottom:6px;" id="auth-welcome-msg">Welcome to RepuPilot</div>
+      <div style="font-size:14px;color:var(--txt2);margin-bottom:28px;line-height:1.5;">Manage reviews across Google Business, Apple, and Yelp.</div>
+    </div>
+    <div id="auth-err" class="auth-err"></div>
+    <div id="auth-loading" class="auth-loading"><div class="spinner"></div><span style="font-size:13px;color:var(--txt2);" id="auth-loading-msg">Signing you in&#8230;</span></div>
+    <div id="auth-btns">
+      <button class="sso-btn google" onclick="signInGoogle()">
+        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <button class="sso-btn microsoft" onclick="signInMicrosoft()">
+        <svg width="18" height="18" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+        Continue with Microsoft
+      </button>
+      <div class="auth-divider"><span>or</span></div>
+      <button class="sso-btn demo" onclick="signInDemo()"><i class="ti ti-player-play" style="font-size:14px;"></i> Try demo (no sign-in required)</button>
+    </div>
+    <p class="auth-legal">By continuing you agree to RepuPilot&#8217;s Terms of Service and Privacy Policy.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app"><div id="app"></div></div>
+
+<script>
+// ── Brand ─────────────────────────────────────────────────────────────────
+let BRAND={companyName:'',logoDataUrl:null};
+(function(){const s=sessionStorage.getItem('rh_brand');if(s)try{BRAND=JSON.parse(s);}catch(e){}})();
+function saveBrand(){sessionStorage.setItem('rh_brand',JSON.stringify(BRAND));}
+function updateAuthDisplay(){
+  const la=document.getElementById('auth-logo-area'),wm=document.getElementById('auth-welcome-msg');
+  if(la)la.innerHTML=BRAND.logoDataUrl?`<img src="${BRAND.logoDataUrl}" class="auth-logo-img" alt="Logo">`:'<div class="auth-logo"><i class="ti ti-plane-tilt"></i></div>';
+  if(wm)wm.textContent=BRAND.companyName?`Welcome to ${BRAND.companyName}\u2019s RepuPilot`:'Welcome to RepuPilot';
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+let currentUser=null,msalInstance=null;
+function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('main-app').style.display='none';updateAuthDisplay();}
+function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('main-app').style.display='block';}
+function showLoading(m){document.getElementById('auth-btns').style.display='none';document.getElementById('auth-loading').style.display='flex';document.getElementById('auth-loading-msg').textContent=m||'Signing you in\u2026';}
+function hideLoading(){document.getElementById('auth-btns').style.display='block';document.getElementById('auth-loading').style.display='none';}
+function showAuthErr(m){const e=document.getElementById('auth-err');e.textContent=m;e.style.display='block';hideLoading();}
+
+function signInGoogle(){
+  if(SSO_CONFIG.google.clientId.startsWith('YOUR_')){showAuthErr('Google Client ID not configured. Use Demo Mode to explore.');return;}
+  showLoading('Opening Google sign-in\u2026');
+  try{google.accounts.id.initialize({client_id:SSO_CONFIG.google.clientId,callback:handleGoogleCallback,auto_select:false});google.accounts.id.prompt(n=>{if(n.isNotDisplayed()||n.isSkippedMoment())showAuthErr('Google sign-in could not open. Check your client ID and allowed origins.');});}
+  catch(e){showAuthErr('Google sign-in failed: '+(e.message||'SDK not loaded.'));}
+}
+function handleGoogleCallback(r){
+  try{const p=JSON.parse(atob((r.credential||r.id_token).split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));loginUser({name:p.name,email:p.email,avatar:p.picture,provider:'google'});}
+  catch(e){showAuthErr('Could not read Google profile. Please try again.');}
+}
+async function signInMicrosoft(){
+  if(SSO_CONFIG.microsoft.clientId.startsWith('YOUR_')){showAuthErr('Microsoft Client ID not configured. Use Demo Mode to explore.');return;}
+  showLoading('Opening Microsoft sign-in\u2026');
+  try{
+    if(!msalInstance){msalInstance=new msal.PublicClientApplication({auth:{clientId:SSO_CONFIG.microsoft.clientId,authority:`https://login.microsoftonline.com/${SSO_CONFIG.microsoft.tenantId||'common'}`,redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:'sessionStorage'}});await msalInstance.initialize();}
+    const r=await msalInstance.loginPopup({scopes:['openid','profile','email','User.Read'],prompt:'select_account'});
+    let avatar=null;
+    try{const t=await msalInstance.acquireTokenSilent({scopes:['User.Read'],account:r.account});const pr=await fetch('https://graph.microsoft.com/v1.0/me/photo/$value',{headers:{Authorization:'Bearer '+t.accessToken}});if(pr.ok)avatar=URL.createObjectURL(await pr.blob());}catch(e){}
+    loginUser({name:r.account.name,email:r.account.username,avatar,provider:'microsoft'});
+  }catch(e){if(e.errorCode==='user_cancelled'){hideLoading();return;}showAuthErr('Microsoft sign-in failed: '+(e.message||'Unknown error'));}
+}
+function signInDemo(){loginUser({name:'Ritchie Demo',email:'ritchie@yourcompany.com',avatar:null,provider:'demo'});}
+function loginUser(user){currentUser=user;sessionStorage.setItem('rh_user',JSON.stringify(user));showApp();render();}
+function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msalInstance){msalInstance.logoutPopup().catch(()=>{});msalInstance=null;}if(typeof google!=='undefined'){try{google.accounts.id.disableAutoSelect();}catch(e){}}showAuth();document.getElementById('auth-err').style.display='none';}
+(function(){const s=sessionStorage.getItem('rh_user');if(s){try{loginUser(JSON.parse(s));}catch(e){showAuth();}}else{showAuth();}})();
+
+// ── App state ─────────────────────────────────────────────────────────────
+const S={
+  tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
+  reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
+  reviews:[
+    {id:1,pf:'google',nm:'Sarah M.',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
+    {id:2,pf:'yelp',nm:'James K.',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
+    {id:3,pf:'apple',nm:'Rachel T.',rt:4,tx:"Great app, very intuitive. Would love dark mode \u2014 that would make it perfect!",dt:'Jun 14',st:'pending',draft:null,reply:null},
+    {id:4,pf:'google',nm:'David L.',rt:4,tx:"Really good service. A couple of minor hiccups but staff resolved them quickly.",dt:'Jun 13',st:'posted',draft:null,reply:"Hi David, thank you for the kind words! We're glad our team sorted things out quickly. Hope to see you again soon! \u2014 The Team"},
+    {id:5,pf:'google',nm:'Mike B.',rt:1,tx:"Terrible experience. Waited 45 minutes, nobody helped. When I got assistance the staff was dismissive.",dt:'Jun 13',st:'pending',draft:null,reply:null},
+    {id:6,pf:'yelp',nm:'Jessica W.',rt:2,tx:"Quality has gone downhill. Product looked nothing like advertised. Very disappointed.",dt:'Jun 12',st:'pending',draft:null,reply:null},
+    {id:7,pf:'apple',nm:'Tom R.',rt:3,tx:"App keeps crashing on iOS 17.4. Really frustrating when I need it for work.",dt:'Jun 12',st:'draft',draft:"Hi Tom, we sincerely apologize for the crashes on iOS 17.4 \u2014 that's unacceptable for a work-critical tool. Our team is actively prioritizing a fix. Please reach out to support@company.com. \u2014 The Team",reply:null},
+    {id:8,pf:'google',nm:'Amanda H.',rt:2,tx:"Overpriced for what you get. When I raised concerns the staff was dismissive.",dt:'Jun 11',st:'pending',draft:null,reply:null},
+  ],
+  templates:[
+    {id:1,nm:'Warm Thank-You',tx:"Thank you so much for the wonderful review, {name}! We're thrilled you had such a great experience. Your kind words mean the world to our team \u2014 we look forward to seeing you again!"},
+    {id:2,nm:'Professional Appreciation',tx:"Hi {name}, thank you for taking the time to share your feedback! We're delighted to hear we met your expectations. Hope to see you again!"},
+    {id:3,nm:'Quick Thanks',tx:"Thanks for the great review, {name}! We really appreciate your support and look forward to serving you again soon."},
+  ],
+  cfg:{prompt:"You are a professional, empathetic customer service representative responding to online reviews. Acknowledge the customer\u2019s specific concern, express genuine empathy, and offer a concrete next step. Keep responses to 2\u20133 sentences. Never be defensive or dismissive.",nameOn:true,support:'support@company.com',sig:'The Team',tone:'professional'}
+};
+
+// ── Listings state ────────────────────────────────────────────────────────
+const MOCK_GBP=[
+  {gbpId:'accounts/123/locations/loc007',name:'SF Hayes Valley',address:'345 Hayes St, San Francisco, CA',category:'Restaurant',phone:'(415) 555-0311',reviews:67},
+  {gbpId:'accounts/123/locations/loc008',name:'Berkeley Telegraph',address:'2521 Telegraph Ave, Berkeley, CA',category:'Restaurant',phone:'(510) 555-0422',reviews:44},
+  {gbpId:'accounts/123/locations/loc009',name:'San Mateo Downtown',address:'118 S. El Camino Real, San Mateo, CA',category:'Fast Casual',phone:'(650) 555-0533',reviews:38},
+  {gbpId:'accounts/123/locations/loc010',name:'Palo Alto University Ave',address:'456 University Ave, Palo Alto, CA',category:'Restaurant',phone:'(650) 555-0644',reviews:92},
+  {gbpId:'accounts/123/locations/loc011',name:'Santa Cruz Pacific Ave',address:'1120 Pacific Ave, Santa Cruz, CA',category:'Restaurant',phone:'(831) 555-0755',reviews:29},
+  {gbpId:'accounts/123/locations/loc012',name:'Sacramento Midtown',address:'2001 L St, Sacramento, CA',category:'Fast Casual',phone:'(916) 555-0866',reviews:53},
+];
+const REPORT_DATA={
+  months:['Jan','Feb','Mar','Apr','May','Jun'],
+  volume:{google:[42,38,51,47,63,58],yelp:[28,31,27,35,42,39],apple:[15,12,18,21,19,24]},
+  avgRating:{overall:[4.1,4.2,4.0,4.3,4.4,4.3],google:[4.1,4.2,4.0,4.3,4.4,4.2],yelp:[4.3,4.5,4.4,4.6,4.5,4.6],apple:[4.0,4.1,4.2,4.1,4.3,4.2]},
+  responseRate:[72,78,75,82,85,88],
+  responseTime:[4.2,3.8,3.5,3.1,2.8,2.6],
+};
+// ── Persist L state to localStorage ─────────────────────────────────────
+function saveLState(){
+  try{localStorage.setItem('rp_folders',JSON.stringify(L.folders));localStorage.setItem('rp_listings',JSON.stringify(L.listings));}catch(e){}
+}
+function loadLState(){
+  try{const f=localStorage.getItem('rp_folders');const l=localStorage.getItem('rp_listings');if(f)L.folders=JSON.parse(f);if(l)L.listings=JSON.parse(l);}catch(e){}
+}
+
+const L={
+  selectedFolderId:null,expanded:{f1:true,f8:true},
+  showNewFolder:false,showNewListing:false,
+  addTab:'manual',importState:'idle',importSelected:{},editingFolderId:null,confirmingDelete:false,
+  newFolder:{name:'',type:'region',parentId:null},
+  newListing:{name:'',address:'',city:'',phone:'',category:'',platforms:{google:false,yelp:false,apple:false},folderId:null},
+  folders:[
+    {id:'f1',name:'West Coast',type:'brand',parentId:null},
+    {id:'f2',name:'Fresh Bites',type:'brand',parentId:'f1'},
+    {id:'f3',name:'SF Mission District',type:'brand',parentId:'f2'},
+    {id:'f4',name:'SF Castro',type:'brand',parentId:'f2'},
+    {id:'f5',name:'Oakland Broadway',type:'brand',parentId:'f2'},
+    {id:'f6',name:'Fresh Bites Express',type:'brand',parentId:'f1'},
+    {id:'f7',name:'San Jose Santana Row',type:'brand',parentId:'f6'},
+    {id:'f8',name:'Pacific Northwest',type:'brand',parentId:null},
+    {id:'f9',name:'Fresh Bites',type:'brand',parentId:'f8'},
+    {id:'f10',name:'Seattle Capitol Hill',type:'brand',parentId:'f9'},
+    {id:'f11',name:'Portland Pearl',type:'brand',parentId:'f9'},
+  ],
+  listings:[
+    {id:'l1',name:'SF Mission District',address:'1824 Mission St',city:'San Francisco, CA',phone:'(415) 555-0192',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc001',folderId:'f3',lastSynced:'2 min ago',platforms:{google:{reviews:124,avg:4.2,pending:3,status:'connected'},yelp:{reviews:87,avg:4.5,pending:1,status:'connected'},apple:{reviews:43,avg:4.1,pending:0,status:'connected'}}},
+    {id:'l2',name:'SF Castro',address:'2410 Market St',city:'San Francisco, CA',phone:'(415) 555-0148',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc002',folderId:'f4',lastSynced:'5 min ago',platforms:{google:{reviews:89,avg:4.4,pending:1,status:'connected'},yelp:{reviews:62,avg:4.6,pending:2,status:'connected'}}},
+    {id:'l3',name:'Oakland Broadway',address:'4521 Broadway',city:'Oakland, CA',phone:'(510) 555-0173',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc003',folderId:'f5',lastSynced:'8 min ago',platforms:{google:{reviews:76,avg:4.0,pending:2,status:'connected'},yelp:{reviews:41,avg:3.9,pending:1,status:'connected'},apple:{reviews:18,avg:4.3,pending:0,status:'connected'}}},
+    {id:'l4',name:'San Jose Santana Row',address:'377 Santana Row',city:'San Jose, CA',phone:'(408) 555-0261',category:'Fast Casual',gbpLocationId:'accounts/123/locations/loc004',folderId:'f7',lastSynced:'12 min ago',platforms:{google:{reviews:55,avg:4.7,pending:0,status:'connected'},apple:{reviews:29,avg:4.6,pending:0,status:'connected'}}},
+    {id:'l5',name:'Seattle Capitol Hill',address:'115 Broadway E',city:'Seattle, WA',phone:'(206) 555-0184',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc005',folderId:'f10',lastSynced:'3 min ago',platforms:{google:{reviews:198,avg:4.3,pending:5,status:'connected'},yelp:{reviews:143,avg:4.4,pending:2,status:'connected'},apple:{reviews:67,avg:4.2,pending:1,status:'connected'}}},
+    {id:'l6',name:'Portland Pearl',address:'816 NW Lovejoy St',city:'Portland, OR',phone:'(503) 555-0229',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc006',folderId:'f11',lastSynced:'18 min ago',platforms:{google:{reviews:112,avg:4.5,pending:1,status:'connected'},yelp:{reviews:98,avg:4.7,pending:0,status:'connected'}}},
+  ],
+};
+
+loadLState();
+try{const bc=localStorage.getItem('rp_brandconfigs');if(bc){const p=JSON.parse(bc);if(p&&typeof p==='object')S.brandConfigs=p;}}catch(e){S.brandConfigs={};}
+function getBrandConfig(listing){
+  let fid=listing?.folderId||null;
+  while(fid){
+    if(S.brandConfigs[fid]) return{...S.cfg,...S.brandConfigs[fid]};
+    const folder=L.folders.find(f=>f.id===fid);
+    fid=folder?.parentId||null;
+  }
+  return S.cfg;
+}
+const PC={google:{l:'Google',bg:'var(--info-bg)',fg:'var(--info-fg)'},apple:{l:'Apple',bg:'var(--bg2)',fg:'var(--txt2)'},yelp:{l:'Yelp',bg:'var(--dang-bg)',fg:'var(--dang-fg)'}};
+const TC={brand:{label:'Brand',icon:'ti-building-store',bg:'var(--purple-bg)',fg:'var(--purple-fg)'}};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+const ini=n=>n.split(' ').slice(0,2).map(p=>p[0]).join('');
+const stars=r=>[1,2,3,4,5].map(i=>`<span style="color:${i<=r?'var(--amber)':'var(--brd2)'};font-size:14px;">&#9733;</span>`).join('');
+const pfB=p=>{const c=PC[p];return`<span class="badge" style="background:${c.bg};color:${c.fg};">${c.l}</span>`;};
+const stB=s=>{const M={pending:['var(--warn-bg)','var(--warn-fg)','Pending'],draft:['var(--info-bg)','var(--info-fg)','AI Draft'],posted:['var(--succ-bg)','var(--succ-fg)','Posted &#10003;']};const[bg,fg,l]=M[s]||M.pending;return`<span class="badge" style="background:${bg};color:${fg};">${l}</span>`;};
+function getDescendantListingCount(fid){return L.listings.filter(l=>l.folderId===fid).length+L.folders.filter(f=>f.parentId===fid).reduce((s,f)=>s+getDescendantListingCount(f.id),0);}
+function getListingsForFolder(fid){
+  if(!fid) return [...L.listings]; // All listings — return everything including unassigned
+  const seen=new Set();
+  const collect=id=>{
+    L.listings.filter(l=>l.folderId===id).forEach(l=>seen.add(l.id));
+    L.folders.filter(f=>f.parentId===id).forEach(f=>collect(f.id));
+  };
+  collect(fid);
+  return L.listings.filter(l=>seen.has(l.id));
+}
+function getFolderDepth(fid,d=0){const f=L.folders.find(x=>x.id===fid);return(!f||!f.parentId)?d:getFolderDepth(f.parentId,d+1);}
+function userAvatarHTML(size=32){if(!currentUser)return'';const s=size+'px';if(currentUser.avatar)return`<div class="avatar" style="width:${s};height:${s};"><img src="${currentUser.avatar}" alt="" referrerpolicy="no-referrer"></div>`;return`<div class="avatar" style="width:${s};height:${s};font-size:${Math.round(size*.35)}px;">${ini(currentUser.name)}</div>`;}
+function providerTag(){const P={google:{l:'Google',bg:'#4285F4',fg:'#fff'},microsoft:{l:'Microsoft',bg:'#0078d4',fg:'#fff'},demo:{l:'Demo',bg:'var(--bg3)',fg:'var(--txt2)'}};const p=P[currentUser?.provider]||P.demo;return`<span class="provider-tag" style="background:${p.bg};color:${p.fg};">${p.l}</span>`;}
+function brandHeaderHTML(){
+  const logo=BRAND.logoDataUrl?`<img src="${BRAND.logoDataUrl}" style="height:30px;max-width:110px;object-fit:contain;border-radius:4px;margin-right:8px;" alt="Logo">`:`<i class="ti ti-plane-tilt" style="font-size:18px;margin-right:7px;opacity:.65;"></i>`;
+  const title=BRAND.companyName?`RepuPilot <span style="font-weight:400;color:var(--txt2);">\u2014 ${BRAND.companyName}</span>`:'RepuPilot';
+  return`<div style="display:flex;align-items:center;">${logo}<h1 style="font-size:20px;font-weight:500;">${title}</h1></div>`;
+}
+
+// ── Review card ───────────────────────────────────────────────────────────
+function reviewCard(rv){
+  const hi=rv.rt>=4,tid=S.sel[rv.id],tpl=tid?S.templates.find(t=>t.id===tid):null;
+  let bot='';
+  if(rv.st==='pending'){
+    if(hi){const pv=tpl?`<div style="background:var(--bg2);border-radius:var(--r-md);padding:10px 12px;font-size:13px;color:var(--txt2);margin-bottom:10px;line-height:1.5;font-style:italic;">"${tpl.tx.replace(/\{name\}/g,rv.nm.split(' ')[0])}"</div>`:'';bot=`<div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--brd);">${pv}<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><select onchange="selTpl(${rv.id},this.value)"><option value="">&#8212; select reply template &#8212;</option>${S.templates.map(t=>`<option value="${t.id}"${t.id===tid?' selected':''}>${t.nm}</option>`).join('')}</select><button class="btn p" onclick="sendReply(${rv.id})"${!tid?' disabled':''}><i class="ti ti-send"></i> Send auto-reply</button></div></div>`;}
+    else{const g=S.gen[rv.id];bot=`<div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--brd);display:flex;align-items:center;gap:12px;"><button class="btn" onclick="genAI(${rv.id})"${g?' disabled':''}><i class="ti ti-${g?'refresh spin':'sparkles'}"></i>${g?' Generating&#8230;':' Generate AI response'}</button><span style="font-size:12px;color:var(--txt2);">Brand voice &#183; reviewer name &#183; support contact</span></div>`;}
+  }else if(rv.st==='draft'){
+    const rfOpts=[
+      {k:'regen',  ic:'ti-refresh',         lb:'Regenerate',         ins:'Rewrite this response completely with a fresh approach.'},
+      {k:'short',  ic:'ti-arrows-minimize', lb:'Shorter',            ins:'Make this response more concise — 1 to 2 sentences max. Keep the warmth.'},
+      {k:'long',   ic:'ti-arrows-maximize', lb:'Longer',             ins:'Expand with more specific acknowledgment and a concrete next step.'},
+      {k:'empath', ic:'ti-heart',           lb:'More empathetic',    ins:'Rewrite with a warmer, more empathetic tone.'},
+      {k:'casual', ic:'ti-leaf',            lb:'Casual + emojis \uD83C\uDF3F', ins:'Rewrite in a casual, upbeat tone with 1-2 fitting emojis. This is for a cannabis brand — keep it fun and chill.'},
+    ];
+    const isRef=S.refining[rv.id];
+    const rfBtns=rfOpts.map(o=>`<button class="pill" style="font-size:11px;padding:3px 10px;${isRef===o.k?'background:var(--txt);color:var(--bg);border-color:transparent':''}" onclick="refineAI(${rv.id},'${o.k}','${o.ins.replace(/'/g,'\u0060')}')" ${isRef?'disabled':''}><i class="ti ${o.ic}" style="font-size:11px;margin-right:2px;"></i>${isRef===o.k?'Working\u2026':o.lb}</button>`).join('');
+    bot=`<div style="margin-top:14px;padding-top:14px;border-top:0.5px solid var(--brd);">
+      <div style="font-size:12px;font-weight:500;color:var(--info-fg);margin-bottom:6px;"><i class="ti ti-sparkles" style="font-size:13px;"></i> AI DRAFT &#8212; edit before posting</div>
+      <textarea id="ed-${rv.id}" rows="4">${rv.draft}</textarea>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 10px;">${rfBtns}</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn p" onclick="approveReply(${rv.id})"><i class="ti ti-check"></i> Approve &amp; post</button>
+        <button class="btn d" onclick="discardDraft(${rv.id})"><i class="ti ti-x"></i> Discard</button>
+      </div>
+    </div>`;
+  }
+  else if(rv.st==='posted'){bot=`<div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--brd);"><div style="font-size:12px;font-weight:500;color:var(--succ-fg);margin-bottom:4px;"><i class="ti ti-circle-check" style="font-size:12px;"></i> Response posted</div><div style="font-size:13px;color:var(--txt2);font-style:italic;line-height:1.6;">${rv.reply}</div></div>`;}
+  return`<div class="card" id="rv-${rv.id}" style="border-left:3px solid ${hi?'var(--succ-fg)':'var(--dang-fg)'};">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;gap:10px;"><div class="avatar">${ini(rv.nm)}</div>
+        <div><div style="font-weight:500;font-size:14px;margin-bottom:2px;">${rv.nm}</div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${stars(rv.rt)}<span style="font-size:12px;color:var(--txt2);">${rv.dt}</span>${rv.loc?`<span style="font-size:11px;color:var(--txt3);">&#183;</span><span style="font-size:11px;color:var(--txt2);"><i class="ti ti-map-pin" style="font-size:10px;margin-right:2px;"></i>${rv.loc}</span>`:''}</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">${pfB(rv.pf)}${stB(rv.st)}</div>
+    </div>
+    <p style="font-size:13px;color:var(--txt2);margin:10px 0 0;line-height:1.6;">${rv.tx}</p>${bot}
+  </div>`;
+}
+
+// ── Folder nodes ──────────────────────────────────────────────────────────
+function renderFolderNode(f,depth){
+  const isSel=L.selectedFolderId===f.id,isExp=!!L.expanded[f.id],hasKids=L.folders.some(c=>c.parentId===f.id),count=getDescendantListingCount(f.id),t=TC[f.type];
+  const kids=hasKids&&isExp?L.folders.filter(c=>c.parentId===f.id).map(c=>renderFolderNode(c,depth+1)).join(''):'';
+  const isEditing = L.editingFolderId === f.id;
+  const nameEl = isEditing
+    ? `<input type="text" id="rename-${f.id}" value="${f.name.replace(/"/g,'&quot;')}"
+         style="flex:1;border:0.5px solid var(--info-fg);border-radius:4px;padding:1px 6px;font-size:13px;background:var(--bg);color:var(--txt);outline:none;min-width:0;"
+         onclick="event.stopPropagation()"
+         onkeydown="if(event.key==='Enter')saveRename('${f.id}');if(event.key==='Escape'){L.editingFolderId=null;renderListings();}"
+         onblur="saveRename('${f.id}')">`
+    : `<span class="fi-name" onclick="selectFolder('${f.id}')" ondblclick="startRename(event,'${f.id}')" title="Double-click to rename">${f.name}</span>
+       <button class="fi-edit" onclick="startRename(event,'${f.id}')" title="Rename folder"><i class="ti ti-pencil" style="font-size:10px;"></i></button>`;
+  return`<div><div class="fi${isSel?' fi-sel':''}" style="padding-left:${8+depth*18}px;"><button class="fi-arr${hasKids?'':' invisible'}" onclick="toggleExpand(event,'${f.id}')"><i class="ti ti-chevron-${isExp?'down':'right'}" style="font-size:11px;"></i></button><span class="fi-icon" style="background:${t.bg};color:${t.fg};"><i class="ti ${t.icon}" style="font-size:11px;"></i></span>${nameEl}<span class="fi-cnt">${count}</span><button class="fi-del" onclick="deleteFolder(event,'${f.id}')" title="Delete folder"><i class="ti ti-trash" style="font-size:11px;"></i></button></div>${kids}</div>`;
+}
+
+// ── Listing card ──────────────────────────────────────────────────────────
+function listingCard(lst){
+  const totalPending=Object.values(lst.platforms).reduce((s,p)=>s+p.pending,0);
+  const folder=L.folders.find(f=>f.id===lst.folderId);
+  const statusColor={connected:'var(--succ-fg)',error:'var(--dang-fg)',disconnected:'var(--txt3)'};
+  const platRows=Object.entries(lst.platforms).map(([pf,st])=>{
+    const c=PC[pf],dot=statusColor[st.status||'connected'];
+    return`<div class="lc-plat"><span class="conn-dot" style="background:${dot};margin-top:1px;"></span><span class="badge" style="background:${c.bg};color:${c.fg};font-size:10px;min-width:50px;text-align:center;">${c.l}</span><span style="font-size:12px;color:var(--txt2);">${st.reviews} reviews</span><span style="font-size:12px;color:var(--amber);">&#9733; ${st.avg.toFixed(1)}</span>${st.pending?`<span class="badge" style="background:var(--warn-bg);color:var(--warn-fg);font-size:10px;">${st.pending} pending</span>`:''}</div>`;
+  }).join('');
+  const initials=lst.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  return`<div class="lc">
+    <div class="lc-header">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:38px;height:38px;border-radius:var(--r-md);background:var(--purple-bg);color:var(--purple-fg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;">${initials}</div>
+          <div><div style="font-weight:500;font-size:14px;line-height:1.3;">${lst.name}</div><div style="font-size:11px;color:var(--txt2);margin-top:1px;">${lst.address||''}${lst.city?', '+lst.city:''}</div></div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">${totalPending?`<span class="badge" style="background:var(--warn-bg);color:var(--warn-fg);">${totalPending} pending</span>`:`<span class="badge" style="background:var(--succ-bg);color:var(--succ-fg);">Up to date</span>`}<button class="btn d" style="padding:3px 7px;font-size:11px;" onclick="deleteListing('${lst.id}')"><i class="ti ti-trash"></i></button></div>
+      </div>
+      ${lst.category||lst.phone?`<div style="display:flex;gap:12px;margin-top:8px;">${lst.category?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-tag" style="font-size:10px;margin-right:3px;"></i>${lst.category}</span>`:''}${lst.phone?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-phone" style="font-size:10px;margin-right:3px;"></i>${lst.phone}</span>`:''}</div>`:''}
+    </div>
+    <div class="lc-body">${platRows}</div>
+    <div class="lc-footer">
+      <span style="font-size:11px;color:var(--txt3);"><i class="ti ti-refresh" style="font-size:10px;margin-right:3px;"></i>Synced ${lst.lastSynced||'recently'}</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <select onchange="moveListing('${lst.id}',this.value)"
+          style="font-size:11px;padding:2px 6px;border-radius:5px;border:0.5px solid var(--brd);background:var(--bg2);color:var(--txt2);cursor:pointer;"
+          title="Move to folder">
+          <option value="">Unassigned</option>
+          ${L.folders.map(f=>`<option value="${f.id}"${f.id===lst.folderId?' selected':''}>${f.name}</option>`).join('')}
+        </select>
+        <button class="btn" style="padding:3px 10px;font-size:11px;" onclick="setTab('reviews')"><i class="ti ti-message-dots" style="font-size:11px;"></i> Reviews</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Folder form ───────────────────────────────────────────────────────────
+function newFolderForm(){
+  const opts=L.folders.map(f=>{const d=getFolderDepth(f.id);return`<option value="${f.id}"${L.newFolder.parentId===f.id?' selected':''}>${'\u2014'.repeat(d)}${d?'&nbsp;':''}${f.name}</option>`;}).join('');
+  return`<div class="card" style="margin-bottom:12px;border-color:var(--info-fg);"><div style="font-size:13px;font-weight:500;margin-bottom:10px;">New folder</div><div style="margin-bottom:8px;"><input type="text" id="nf-name" placeholder="Folder name" oninput="L.newFolder.name=this.value"></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Parent folder <span style="opacity:.6;">(optional)</span></div><select onchange="L.newFolder.parentId=this.value||null"><option value="">None &#8212; top level</option>${opts}</select></div><div style="display:flex;gap:8px;"><button class="btn p" onclick="createFolder()"><i class="ti ti-check"></i> Create</button><button class="btn" onclick="L.showNewFolder=false;renderListings()">Cancel</button></div></div>`;
+}
+
+// ── Add location form (tabbed) ────────────────────────────────────────────
+const G_ICON=`<svg width="14" height="14" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;vertical-align:-2px;"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>`;
+
+function newListingForm(){
+  const allFolderOpts=L.folders.map(f=>{const d=getFolderDepth(f.id);return`<option value="${f.id}"${L.newListing.folderId===f.id?' selected':''}>${'\u2014'.repeat(d)}${d?'&nbsp;':''}${f.name}</option>`;}).join('');
+  const existingIds=new Set(L.listings.map(l=>l.gbpLocationId).filter(Boolean));
+
+  const manualForm=`
+    <div class="grid2" style="margin-bottom:0;">
+      <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Location name <span style="color:var(--dang-fg);">*</span></div><input type="text" id="nl-name" placeholder="e.g. Chicago River North" oninput="L.newListing.name=this.value"></div>
+      <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Street address</div><input type="text" id="nl-addr" placeholder="123 Main St" oninput="L.newListing.address=this.value"></div>
+    </div>
+    <div class="grid2" style="margin-bottom:0;">
+      <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">City, State</div><input type="text" id="nl-city" placeholder="San Francisco, CA" oninput="L.newListing.city=this.value"></div>
+      <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Phone</div><input type="text" id="nl-phone" placeholder="(415) 555-0100" oninput="L.newListing.phone=this.value"></div>
+    </div>
+    <div class="grid2" style="margin-bottom:0;">
+      <div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Category</div><input type="text" id="nl-cat" placeholder="e.g. Restaurant" oninput="L.newListing.category=this.value"></div>
+      <div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Folder</div><select onchange="L.newListing.folderId=this.value||null"><option value="">Unassigned</option>${allFolderOpts}</select></div>
+    </div>
+    <div style="margin-bottom:14px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:8px;">Platforms</div>
+      <div style="display:flex;gap:8px;">${['google','yelp','apple'].map(p=>{const c=PC[p],checked=!!L.newListing.platforms[p];return`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:var(--r-md);border:0.5px solid ${checked?c.fg:'var(--brd)'};background:${checked?c.bg:'transparent'};font-size:13px;"><input type="checkbox" ${checked?'checked':''} onchange="L.newListing.platforms['${p}']=this.checked;renderListings()" style="cursor:pointer;"><span style="color:${c.fg};font-size:11px;font-weight:500;">${c.l}</span></label>`;}).join('')}</div>
+    </div>
+    <div style="display:flex;gap:8px;"><button class="btn p" onclick="createListing()"><i class="ti ti-check"></i> Add location</button><button class="btn" onclick="L.showNewListing=false;renderListings()">Cancel</button></div>`;
+
+  let importContent='';
+  if(L.importState==='idle'){
+    importContent=`<div style="text-align:center;padding:24px 16px;">
+      <div style="width:48px;height:48px;background:var(--info-bg);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;"><svg width="24" height="24" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg></div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:6px;">Connect Google Business Profile</div>
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:20px;max-width:320px;margin-left:auto;margin-right:auto;line-height:1.6;">Authorize RepuPilot to discover your GBP locations and import them automatically.</div>
+      <button class="btn p" style="padding:10px 24px;" onclick="simulateGBPConnect()">${G_ICON} Sign in with Google</button>
+      <div style="margin-top:12px;"><button class="btn" onclick="L.showNewListing=false;renderListings()">Cancel</button></div>
+    </div>`;
+  } else if(L.importState==='connecting'){
+    importContent=`<div style="text-align:center;padding:32px 16px;"><div class="spinner" style="margin:0 auto 14px;"></div><div style="font-size:13px;color:var(--txt2);">Discovering locations from Google Business Profile&#8230;</div></div>`;
+  } else if(L.importState==='discovered'){
+    const available=MOCK_GBP.filter(l=>!existingIds.has(l.gbpId));
+    const selCount=Object.values(L.importSelected).filter(Boolean).length;
+    importContent=`<div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div><div style="font-size:13px;font-weight:500;">${available.length} locations found</div><div style="font-size:12px;color:var(--txt2);">from your Google Business Profile account</div></div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--txt2);"><input type="checkbox" onchange="toggleSelectAll(this.checked)" ${selCount===available.length&&available.length>0?'checked':''}> Select all</label>
+      </div>
+      <div style="max-height:260px;overflow-y:auto;border:0.5px solid var(--brd);border-radius:var(--r-md);margin-bottom:12px;">
+        ${available.map(loc=>{const isSel=!!L.importSelected[loc.gbpId];return`<div class="import-location-item${isSel?' selected':''}" onclick="toggleImportSel('${loc.gbpId}')">
+          <input type="checkbox" ${isSel?'checked':''} onclick="event.stopPropagation();toggleImportSel('${loc.gbpId}')" style="cursor:pointer;flex-shrink:0;margin-top:2px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;">${loc.name}</div>
+            <div style="font-size:11px;color:var(--txt2);margin-top:1px;">${loc.address}</div>
+            <div style="display:flex;gap:10px;margin-top:4px;"><span style="font-size:11px;color:var(--txt2);"><i class="ti ti-tag" style="font-size:10px;"></i> ${loc.category}</span><span style="font-size:11px;color:var(--txt2);"><i class="ti ti-star" style="font-size:10px;"></i> ${loc.reviews} reviews</span></div>
+          </div>
+        </div>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn p" onclick="importSelectedLocations()"${selCount===0?' disabled':''}><i class="ti ti-download"></i> Import ${selCount>0?selCount+' location'+(selCount!==1?'s':''):'locations'}</button>
+        <button class="btn" onclick="L.importState='idle';L.importSelected={};renderListings()">Back</button>
+        <button class="btn" onclick="L.showNewListing=false;L.importState='idle';L.importSelected={};renderListings()" style="margin-left:auto;">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  return`<div class="card" style="margin-bottom:12px;border-color:var(--info-fg);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:14px;font-weight:500;">Add location</div>
+      <div class="add-tabs">
+        <button class="add-tab${L.addTab==='manual'?' on':''}" onclick="L.addTab='manual';renderListings()"><i class="ti ti-pencil" style="font-size:12px;margin-right:4px;"></i>Manual</button>
+        <button class="add-tab${L.addTab==='import'?' on':''}" onclick="L.addTab='import';renderListings()">${G_ICON} &nbsp;Import from Google</button>
+      </div>
+    </div>
+    ${L.addTab==='manual'?manualForm:importContent}
+  </div>`;
+}
+
+// ── Listings inner ────────────────────────────────────────────────────────
+function renderListingsInner(){
+  const rootFolders=L.folders.filter(f=>!f.parentId),visListings=getListingsForFolder(L.selectedFolderId);
+  const selectedName=L.selectedFolderId?(L.folders.find(f=>f.id===L.selectedFolderId)?.name||''):'All listings';
+  const totalPending=L.listings.reduce((s,l)=>s+Object.values(l.platforms).reduce((a,p)=>a+p.pending,0),0);
+
+  const treeHTML=`<div class="folder-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div class="sect-label" style="margin:0;">FOLDERS</div><button class="btn" style="padding:4px 10px;font-size:12px;" onclick="L.showNewFolder=!L.showNewFolder;L.newFolder={name:'',type:'region',parentId:null};renderListings()"><i class="ti ti-plus"></i> New</button></div>
+    ${L.showNewFolder?newFolderForm():''}
+    <div class="card" style="padding:6px;">
+      <div class="fi${!L.selectedFolderId?' fi-sel':''}" onclick="selectFolder(null)" style="padding-left:8px;"><span style="width:16px;display:inline-block;"></span><span class="fi-icon" style="background:var(--bg3);color:var(--txt2);"><i class="ti ti-layout-list" style="font-size:11px;"></i></span><span class="fi-name">All listings</span><span class="fi-cnt">${L.listings.length}</span></div>
+      ${rootFolders.map(f=>renderFolderNode(f,0)).join('')}
+    </div>
+    ${L.selectedFolderId ? `
+    <div style="margin-top:8px;">
+      ${L.confirmingDelete ? `
+      <div style="background:var(--dang-bg);border-radius:var(--r-md);padding:10px 12px;">
+        <div style="font-size:12px;color:var(--dang-fg);font-weight:500;margin-bottom:8px;">Delete this folder?</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn d" style="flex:1;justify-content:center;font-size:12px;padding:6px;" onclick="confirmDeleteFolder()"><i class="ti ti-trash"></i> Yes, delete</button>
+          <button class="btn" style="flex:1;justify-content:center;font-size:12px;padding:6px;" onclick="L.confirmingDelete=false;renderListings()">Cancel</button>
+        </div>
+      </div>` : `
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="flex:1;justify-content:center;font-size:12px;padding:6px;" onclick="startRename(event,'${L.selectedFolderId}')"><i class="ti ti-pencil"></i> Rename</button>
+        <button class="btn d" style="flex:1;justify-content:center;font-size:12px;padding:6px;" onclick="L.confirmingDelete=true;renderListings()"><i class="ti ti-trash"></i> Delete</button>
+      </div>`}
+    </div>` : ''}
+  </div>`;
+
+  const listingsHTML=`<div style="flex:1;min-width:0;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div><div style="font-size:15px;font-weight:500;">${selectedName}</div><div style="font-size:12px;color:var(--txt2);margin-top:2px;">${visListings.length} listing${visListings.length!==1?'s':''}${totalPending?` &#183; <span style="color:var(--warn-fg);">${totalPending} pending responses</span>`:''}</div></div>
+      <button class="btn p" onclick="L.showNewListing=!L.showNewListing;L.newListing={name:'',address:'',city:'',phone:'',category:'',platforms:{google:false,yelp:false,apple:false},folderId:L.selectedFolderId};renderListings()"><i class="ti ti-plus"></i> Add location</button>
+    </div>
+    ${L.showNewListing?newListingForm():''}
+    ${visListings.length?`<div class="listing-grid">${visListings.map(l=>listingCard(l)).join('')}</div>`:`<div style="text-align:center;padding:3rem 1rem;color:var(--txt2);"><i class="ti ti-building-store" style="font-size:32px;opacity:.3;display:block;margin-bottom:12px;"></i>No listings in this folder yet.<br>Click <strong>Add location</strong> to get started.</div>`}
+  </div>`;
+
+  return treeHTML+listingsHTML;
+}
+
+function renderListings(){const el=document.getElementById('listings-view');if(el)el.innerHTML=`<div class="listings-layout">${renderListingsInner()}</div>`;else render();}
+
+// ── Tab content renderers ─────────────────────────────────────────────────
+function renderDashboard(){
+  const tot=S.reviews.length,avg=(S.reviews.reduce((a,r)=>a+r.rt,0)/tot).toFixed(1),act=S.reviews.filter(r=>r.st==='pending'||r.st==='draft').length,post=S.reviews.filter(r=>r.st==='posted').length;
+  const rec=[...S.reviews].sort((a,b)=>({pending:0,draft:1,posted:2})[a.st]-({pending:0,draft:1,posted:2})[b.st]).slice(0,4);
+  return`<div class="grid4">${[['Total Reviews',tot,''],['Avg Rating',avg+' &#9733;',''],['Need Action',act,'var(--warn-fg)'],['Posted',post,'var(--succ-fg)']].map(([l,v,c])=>`<div class="metric"><div style="font-size:12px;color:var(--txt2);margin-bottom:6px;">${l}</div><div style="font-size:24px;font-weight:500;${c?`color:${c}`:''}">${v}</div></div>`).join('')}</div>
+  <div class="grid2">
+    <div><div class="sect-label">PLATFORMS</div>${['google','yelp','apple'].map(p=>{const rv=S.reviews.filter(r=>r.pf===p),pct=Math.round(rv.length/tot*100),av=rv.length?(rv.reduce((a,r)=>a+r.rt,0)/rv.length).toFixed(1):'&#8212;',c=PC[p];return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span class="badge" style="background:${c.bg};color:${c.fg};min-width:50px;text-align:center;">${c.l}</span><div class="bar-wrap"><div class="bar" style="width:${pct}%;background:${c.fg};"></div></div><span style="font-size:12px;color:var(--txt2);white-space:nowrap;">${rv.length} &#183; ${av}&#9733;</span></div>`;}).join('')}</div>
+    <div><div class="sect-label">RATINGS</div>${[5,4,3,2,1].map(r=>{const cnt=S.reviews.filter(rv=>rv.rt===r).length,pct=Math.round(cnt/tot*100),col=r>=4?'var(--succ-fg)':r===3?'var(--amber)':'var(--dang-fg)';return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:12px;color:var(--txt2);min-width:18px;">${r}&#9733;</span><div class="bar-wrap"><div class="bar" style="width:${pct}%;background:${col};"></div></div><span style="font-size:12px;color:var(--txt2);min-width:14px;">${cnt}</span></div>`;}).join('')}</div>
+  </div>
+  <div class="sect-label">RECENT REVIEWS</div>${rec.map(r=>reviewCard(r)).join('')}`;
+}
+
+function renderReviews(){
+  let rv=S.reviews;if(S.pf!=='all')rv=rv.filter(r=>r.pf===S.pf);if(S.st!=='all')rv=rv.filter(r=>r.st===S.st);
+  return`<div class="pills">${['all','google','yelp','apple'].map(p=>`<button class="pill${S.pf===p?' on':''}" onclick="setFilter('pf','${p}')">${p==='all'?'All platforms':PC[p].l}</button>`).join('')}</div>
+  <div class="pills" style="margin-bottom:24px;">${[['all','All'],['pending','Pending'],['draft','AI Draft'],['posted','Posted']].map(([v,l])=>`<button class="pill${S.st===v?' on':''}" onclick="setFilter('st','${v}')">${l}</button>`).join('')}</div>
+  <div style="font-size:13px;color:var(--txt2);margin-bottom:14px;">${rv.length} review${rv.length!==1?'s':''}</div>
+  ${rv.length?rv.map(r=>reviewCard(r)).join(''):'<div style="text-align:center;padding:2rem;color:var(--txt2);">No reviews match this filter.</div>'}`;
+}
+
+function renderTemplates(){
+  return`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;"><div><div style="font-size:15px;font-weight:500;">Auto-reply templates</div><div style="font-size:13px;color:var(--txt2);margin-top:3px;">For 4&#9733; and 5&#9733; reviews</div></div><button class="btn p" onclick="showTemplateForm(true)"><i class="ti ti-plus"></i> Add template</button></div>
+  ${S.templates.map(t=>`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;"><div><span style="font-weight:500;font-size:14px;">${t.nm}</span><span class="badge" style="background:var(--succ-bg);color:var(--succ-fg);margin-left:8px;">4&#9733;&#8211;5&#9733;</span></div><button class="btn d" style="font-size:12px;padding:4px 10px;" onclick="deleteTemplate(${t.id})"><i class="ti ti-trash"></i></button></div><p style="font-size:13px;color:var(--txt2);line-height:1.6;">${t.tx}</p><div style="margin-top:8px;font-size:11px;color:var(--txt2);">Use <code style="background:var(--bg2);padding:1px 5px;border-radius:3px;">{name}</code> to insert reviewer&#8217;s first name</div></div>`).join('')}
+  <div id="tform" style="display:none;margin-top:4px;"><div class="card"><div style="font-weight:500;margin-bottom:14px;">New template</div><div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--txt2);display:block;margin-bottom:4px;">Template name</label><input type="text" id="tn" placeholder="e.g. Warm Thank-You"></div><div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--txt2);display:block;margin-bottom:4px;">Response text &#8212; use {name} to personalize</label><textarea id="tt" rows="4" placeholder="Thank you for the wonderful review, {name}! ..."></textarea></div><div style="display:flex;gap:8px;"><button class="btn p" onclick="saveTemplate()"><i class="ti ti-check"></i> Save</button><button class="btn" onclick="showTemplateForm(false)">Cancel</button></div></div></div>`;
+}
+
+function renderBrandVoice(){
+  if(!S.brandConfigs||typeof S.brandConfigs!=='object') S.brandConfigs={};
+  const topFolders=L.folders.filter(f=>!f.parentId);
+  let brandCards='';
+  topFolders.forEach(f=>{
+    const bc=S.brandConfigs[f.id]||{};
+    const has=!!S.brandConfigs[f.id];
+    brandCards+=
+      '<div class="card" style="margin-bottom:12px;'+(has?'border-color:var(--info-fg)':'')+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
+      +'<div style="display:flex;align-items:center;gap:8px;">'
+      +'<span style="background:var(--purple-bg);color:var(--purple-fg);width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;"><i class="ti ti-building-store" style="font-size:13px;"></i></span>'
+      +'<span style="font-size:14px;font-weight:500;">'+f.name+'</span>'
+      +'</div>'
+      +(has?'<span class="badge" style="background:var(--succ-bg);color:var(--succ-fg);">Custom</span>'
+           :'<span class="badge" style="background:var(--bg2);color:var(--txt2);">Global defaults</span>')
+      +'</div>'
+      +'<div class="grid2" style="margin-bottom:12px;">'
+      +'<div><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Support email</div>'
+      +'<input type="text" id="bc-email-'+f.id+'" value="'+(bc.support||'')+'" placeholder="support@brand.com"></div>'
+      +'<div><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Signature</div>'
+      +'<input type="text" id="bc-sig-'+f.id+'" value="'+(bc.sig||'')+'" placeholder="The '+f.name+' Team"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;">'
+      +'<button class="btn p" style="font-size:12px;padding:6px 14px;" onclick="saveBrandConfig(\''+f.id+'\')"><i class="ti ti-check"></i> Save</button>'
+      +(has?'<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="clearBrandConfig(\''+f.id+'\')">Reset to global</button>':'')
+      +'<span id="bc-ok-'+f.id+'" style="font-size:12px;color:var(--succ-fg);display:none;"><i class="ti ti-check"></i> Saved!</span>'
+      +'</div></div>';
+  });
+
+  const tonePills=['professional','friendly','empathetic'].map(t=>`<button class="pill${S.cfg.tone===t?' on':''}" onclick="setTone('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('');
+
+  return`<div style="max-width:620px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Brand voice &amp; AI configuration</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:24px;">Set global defaults. Override support email &amp; signature per brand below.</div>
+    <div style="font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin-bottom:10px;">GLOBAL DEFAULTS</div>
+    <div class="card" style="margin-bottom:24px;">
+      <div style="margin-bottom:14px;"><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">AI prompt</label><textarea id="cp" rows="4">${S.cfg.prompt}</textarea></div>
+      <div class="grid2" style="margin-bottom:12px;">
+        <div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Fallback support email</label><input type="text" id="cs" value="${S.cfg.support}" placeholder="support@company.com"></div>
+        <div><label style="font-size:13px;font-weight:500;display:block;margin-bottom:4px;">Fallback signature</label><input type="text" id="csg" value="${S.cfg.sig}" placeholder="The Team"></div>
+      </div>
+      <div style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:10px;cursor:pointer;"><input type="checkbox" id="cn" ${S.cfg.nameOn?'checked':''} style="width:16px;height:16px;cursor:pointer;"><span style="font-size:13px;">Address reviewer by first name</span></label></div>
+      <div style="margin-bottom:14px;"><div style="font-size:13px;font-weight:500;margin-bottom:8px;">Tone</div><div class="pills">${tonePills}</div></div>
+      <button class="btn p" onclick="saveCfg()"><i class="ti ti-check"></i> Save global defaults</button>
+      <span id="svok" style="font-size:13px;color:var(--succ-fg);margin-left:12px;display:none;"><i class="ti ti-check"></i> Saved!</span>
+    </div>
+    <div style="font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin-bottom:10px;">BRAND OVERRIDES <span style="font-weight:400;">&#8212; one card per top-level folder</span></div>
+    ${topFolders.length?brandCards:'<div style="font-size:13px;color:var(--txt2);">No brand folders yet. Create top-level folders in the Listings tab.</div>'}
+  </div>`;
+}
+function renderBrandGuide(){
+  const name=BRAND.companyName||'';
+  const previewLogin=name?`Welcome to ${name}\u2019s RepuPilot`:'Welcome to RepuPilot';
+  const previewHeader=name?`RepuPilot \u2014 ${name}`:'RepuPilot';
+  return`<div style="max-width:560px;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Brand guide</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:28px;">Customize how RepuPilot appears for your team.</div>
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:28px;">
+      <span class="bq-num">1</span>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:500;margin-bottom:4px;">What&#8217;s your company name?</div><div style="font-size:13px;color:var(--txt2);margin-bottom:10px;">Shows on the login screen and next to the RepuPilot header.</div><input type="text" id="bg-name" placeholder="e.g. Acme Corp" value="${name.replace(/"/g,'&quot;')}" oninput="BRAND.companyName=this.value;refreshBrandPreview()" style="font-size:15px;max-width:340px;"></div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:28px;">
+      <span class="bq-num">2</span>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:500;margin-bottom:4px;">Upload your logo</div><div style="font-size:13px;color:var(--txt2);margin-bottom:10px;">Appears on the login screen and in the app header. PNG, SVG, or JPG &#183; max 2 MB.</div>
+        <label class="logo-drop" style="max-width:340px;">${BRAND.logoDataUrl?`<div style="display:flex;align-items:center;justify-content:center;gap:14px;"><img src="${BRAND.logoDataUrl}" style="height:44px;max-width:160px;object-fit:contain;border-radius:4px;" alt="Logo"><button type="button" onclick="event.preventDefault();BRAND.logoDataUrl=null;S.tab='brand';render()" style="background:none;border:0.5px solid var(--brd2);padding:5px 12px;border-radius:var(--r-md);font-size:12px;color:var(--txt2);cursor:pointer;font-family:inherit;"><i class="ti ti-x" style="font-size:11px;"></i> Remove</button></div>`:`<i class="ti ti-upload" style="font-size:26px;color:var(--txt3);display:block;margin-bottom:6px;"></i><div style="font-size:13px;color:var(--txt2);">Click to upload</div>`}<input type="file" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)"></label>
+      </div>
+    </div>
+    <div class="brand-preview" style="margin-bottom:28px;">
+      <div class="bq-label" style="margin-bottom:8px;">LIVE PREVIEW</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--brd);">
+        <span style="font-size:12px;color:var(--txt2);min-width:56px;">Login</span>
+        <div style="display:flex;align-items:center;gap:8px;">${BRAND.logoDataUrl?`<img src="${BRAND.logoDataUrl}" style="height:28px;max-width:80px;object-fit:contain;border-radius:4px;" alt="">`:`<div style="width:28px;height:28px;background:var(--txt);border-radius:6px;display:flex;align-items:center;justify-content:center;"><i class="ti ti-plane-tilt" style="font-size:12px;color:var(--bg);"></i></div>`}<span style="font-size:14px;font-weight:500;" id="preview-login">${previewLogin}</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:12px;color:var(--txt2);min-width:56px;">Header</span>
+        <div style="display:flex;align-items:center;gap:8px;">${BRAND.logoDataUrl?`<img src="${BRAND.logoDataUrl}" style="height:22px;max-width:70px;object-fit:contain;border-radius:3px;" alt="">`:`<i class="ti ti-plane-tilt" style="font-size:14px;opacity:.55;"></i>`}<span style="font-size:14px;font-weight:500;" id="preview-header">${previewHeader}</span></div>
+      </div>
+    </div>
+    <button class="btn p" onclick="saveBrandGuide()" style="padding:10px 24px;font-size:14px;"><i class="ti ti-check"></i> Save brand guide</button>
+    <span id="bg-saved" style="font-size:13px;color:var(--succ-fg);margin-left:14px;display:none;"><i class="ti ti-check"></i> Saved!</span>
+  </div>`;
+}
+
+function refreshBrandPreview(){
+  const name=BRAND.companyName||'';
+  const pl=document.getElementById('preview-login'),ph=document.getElementById('preview-header');
+  if(pl)pl.textContent=name?`Welcome to ${name}\u2019s RepuPilot`:'Welcome to RepuPilot';
+  if(ph)ph.textContent=name?`RepuPilot \u2014 ${name}`:'RepuPilot';
+}
+function handleLogoUpload(e){const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){alert('Logo must be under 2 MB.');return;}const reader=new FileReader();reader.onload=ev=>{BRAND.logoDataUrl=ev.target.result;S.tab='brand';render();};reader.readAsDataURL(file);}
+function saveBrandGuide(){const nameEl=document.getElementById('bg-name');if(nameEl)BRAND.companyName=nameEl.value.trim();saveBrand();updateAuthDisplay();const headerEl=document.getElementById('brand-header');if(headerEl)headerEl.innerHTML=brandHeaderHTML();const ok=document.getElementById('bg-saved');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}}
+
+// ── SVG Chart Helpers ────────────────────────────────────────────────────
+function svgLine(vals,w,h,stroke,labels,yMin,yMax){
+  const pL=38,pR=12,pT=14,pB=30,pw=w-pL-pR,ph=h-pT-pB,n=vals.length;
+  const lo=yMin??Math.min(...vals),hi=yMax??Math.max(...vals);
+  const buf=(hi-lo)*0.12||0.15,lo2=lo-buf,hi2=hi+buf,rng=hi2-lo2;
+  const px=i=>pL+i/(n-1)*pw,py=v=>pT+ph-(v-lo2)/rng*ph;
+  const lp=vals.map((v,i)=>(i===0?'M':'L')+px(i).toFixed(1)+','+py(v).toFixed(1)).join(' ');
+  const ap=lp+` L${px(n-1).toFixed(1)},${(pT+ph).toFixed(1)} L${pL},${(pT+ph).toFixed(1)} Z`;
+  const grid=[0.25,0.5,0.75].map(f=>{const yv=(pT+ph*(1-f)).toFixed(1);return`<line x1="${pL}" y1="${yv}" x2="${pL+pw}" y2="${yv}" stroke="rgba(0,0,0,.07)" stroke-dasharray="3,3"/>`;}).join('');
+  const yL=[lo2,lo2+rng*0.5,hi2].map(v=>`<text x="${pL-5}" y="${(py(v)+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9c9c96">${v.toFixed(1)}</text>`).join('');
+  const xL=labels.map((l,i)=>`<text x="${px(i).toFixed(1)}" y="${(pT+ph+16).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9c9c96">${l}</text>`).join('');
+  const dots=vals.map((v,i)=>`<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="3" fill="${stroke}" stroke="white" stroke-width="1.5"/>`).join('');
+  return`<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">${grid}${yL}${xL}<path d="${ap}" fill="${stroke}" opacity="0.08"/><path d="${lp}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>${dots}</svg>`;
+}
+
+function svgBars(datasets,months,w,h){
+  const pL=38,pR=12,pT=14,pB=30,pw=w-pL-pR,ph=h-pT-pB,n=months.length,nd=datasets.length;
+  const maxV=Math.max(...datasets.flatMap(d=>d.values))||1;
+  const gW=pw/n,bW=gW*0.72/nd,outerGap=gW*0.14;
+  const bX=(gi,di)=>pL+gi*gW+outerGap+di*(bW+1);
+  const bH=v=>(v/maxV*ph)||1,bY=v=>pT+ph-bH(v);
+  const yStep=Math.ceil(maxV/4/10)*10||10;
+  const grid=[1,2,3,4].map(i=>{const v=i*yStep;if(v>maxV*1.15)return'';const yv=(pT+ph-v/maxV*ph).toFixed(1);return`<line x1="${pL}" y1="${yv}" x2="${pL+pw}" y2="${yv}" stroke="rgba(0,0,0,.07)" stroke-dasharray="3,3"/><text x="${pL-5}" y="${(+yv+3).toFixed(0)}" text-anchor="end" font-size="9" fill="#9c9c96">${v}</text>`;}).join('');
+  const bars=datasets.map((d,di)=>d.values.map((v,gi)=>`<rect x="${bX(gi,di).toFixed(1)}" y="${bY(v).toFixed(1)}" width="${bW.toFixed(1)}" height="${bH(v).toFixed(1)}" rx="2" fill="${d.color}"/>`).join('')).join('');
+  const xL=months.map((m,i)=>`<text x="${(pL+(i+0.5)*gW).toFixed(1)}" y="${(pT+ph+16).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9c9c96">${m}</text>`).join('');
+  const legend=datasets.map((d,i)=>`<g transform="translate(${pL+i*70},${h+6})"><rect x="0" y="-7" width="8" height="8" rx="2" fill="${d.color}"/><text x="11" y="0" font-size="9" fill="#6b6b66">${d.label}</text></g>`).join('');
+  return`<svg viewBox="0 0 ${w} ${h+18}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">${grid}${bars}${xL}${legend}</svg>`;
+}
+
+function svgSpark(vals,color){
+  const n=vals.length;if(n<2)return'';
+  const lo=Math.min(...vals),hi=Math.max(...vals),rng=hi-lo||1,w=56,h=22;
+  const px=i=>i/(n-1)*w,py=v=>h-(v-lo)/rng*h*0.8-h*0.1;
+  const path=vals.map((v,i)=>(i===0?'M':'L')+px(i).toFixed(1)+','+py(v).toFixed(1)).join(' ');
+  return`<svg viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px;vertical-align:middle;"><path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+// ── Executive Summary ─────────────────────────────────────────────────────
+function renderExecutiveSummary(){
+  const rd=REPORT_DATA,months=rd.months;
+  const totalReviews=rd.volume.google.reduce((a,b)=>a+b,0)+rd.volume.yelp.reduce((a,b)=>a+b,0)+rd.volume.apple.reduce((a,b)=>a+b,0);
+  const latestRating=rd.avgRating.overall[5],prevRating=rd.avgRating.overall[0];
+  const latestRR=rd.responseRate[5],prevRR=rd.responseRate[0];
+  const pendingTotal=L.listings.reduce((s,l)=>s+Object.values(l.platforms).reduce((a,p)=>a+p.pending,0),0);
+  const delta=(v,prev,ispp)=>v>=prev
+    ?`<div class="report-metric-delta" style="color:var(--succ-fg);">&#9650; ${ispp?(v-prev).toFixed(0)+'pp':(v-prev).toFixed(1)} vs Jan</div>`
+    :`<div class="report-metric-delta" style="color:var(--dang-fg);">&#9660; ${ispp?(prev-v).toFixed(0)+'pp':(prev-v).toFixed(1)} vs Jan</div>`;
+  const locRows=[...L.listings].sort((a,b)=>Object.values(b.platforms).reduce((s,p)=>s+p.reviews,0)-Object.values(a.platforms).reduce((s,p)=>s+p.reviews,0)).slice(0,6).map((lst,i)=>{
+    const reviews=Object.values(lst.platforms).reduce((s,p)=>s+p.reviews,0);
+    const avgR=(Object.values(lst.platforms).reduce((s,p)=>s+p.avg,0)/Object.keys(lst.platforms).length).toFixed(1);
+    const pending=Object.values(lst.platforms).reduce((s,p)=>s+p.pending,0);
+    const rr=Math.round(82+i*2);
+    const sparkVals=[28,35,31,38,42,reviews/6|0].map(v=>Math.round(v*(0.9+Math.random()*0.2)));
+    return`<tr><td style="color:var(--txt2);font-size:12px;">#${i+1}</td><td style="font-weight:500;">${lst.name}</td><td>${reviews}</td><td><span style="color:var(--amber);">&#9733;</span> ${avgR}</td><td style="color:var(--succ-fg);font-weight:500;">${rr}%</td><td>${pending?`<span class="badge" style="background:var(--warn-bg);color:var(--warn-fg);">${pending}</span>`:'<span style="color:var(--succ-fg);">&#10003;</span>'}</td><td>${svgSpark(sparkVals,i<3?'#3b6d11':'#185fa5')}</td></tr>`;
+  }).join('');
+  const insights=[
+    {icon:'ti-trending-up',col:'var(--succ-fg)',bg:'var(--succ-bg)',txt:`Response rate improved <strong>${latestRR-prevRR} percentage points</strong> since January — from ${prevRR}% to ${latestRR}%.`},
+    {icon:'ti-star',col:'var(--amber)',bg:'var(--warn-bg)',txt:`Average rating is <strong>${latestRating}&#9733;</strong> across all platforms, up ${(latestRating-prevRating).toFixed(1)} points from January.`},
+    {icon:'ti-building-store',col:'var(--info-fg)',bg:'var(--info-bg)',txt:`<strong>Seattle Capitol Hill</strong> leads all locations with 198 reviews and the highest review velocity.`},
+    {icon:'ti-clock',col:'var(--warn-fg)',bg:'var(--warn-bg)',txt:`<strong>${pendingTotal} reviews</strong> across ${L.listings.filter(l=>Object.values(l.platforms).some(p=>p.pending>0)).length} locations are awaiting a response.`},
+  ];
+  return`<div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+      <div class="report-metric"><div class="report-metric-label">Total Reviews</div><div class="report-metric-val">${totalReviews}</div>${delta(totalReviews,480,false)}</div>
+      <div class="report-metric"><div class="report-metric-label">Avg Rating</div><div class="report-metric-val">${latestRating}<span style="font-size:18px;color:var(--amber);">&#9733;</span></div>${delta(latestRating,prevRating,false)}</div>
+      <div class="report-metric"><div class="report-metric-label">Response Rate</div><div class="report-metric-val">${latestRR}%</div>${delta(latestRR,prevRR,true)}</div>
+      <div class="report-metric"><div class="report-metric-label">Pending Responses</div><div class="report-metric-val" style="color:${pendingTotal>0?'var(--warn-fg)':'var(--succ-fg)'};">${pendingTotal}</div><div class="report-metric-delta" style="color:var(--txt2);">across ${L.listings.length} locations</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div class="report-chart-card"><div class="report-chart-title">Avg Rating Trend</div>${svgLine(rd.avgRating.overall,420,155,'#185fa5',months,3.5,5.0)}</div>
+      <div class="report-chart-card"><div class="report-chart-title">Review Volume by Platform</div>${svgBars([{label:'Google',color:'#4285F4',values:rd.volume.google},{label:'Yelp',color:'#d32323',values:rd.volume.yelp},{label:'Apple',color:'#9c9c96',values:rd.volume.apple}],months,420,140)}</div>
+    </div>
+    <div class="report-chart-card" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div class="report-chart-title" style="margin:0;">Location Performance</div><span style="font-size:12px;color:var(--txt2);">Ranked by review volume</span></div>
+      <table class="report-table"><thead><tr><th>#</th><th>Location</th><th>Reviews</th><th>Avg &#9733;</th><th>Response Rate</th><th>Pending</th><th>6-Mo Trend</th></tr></thead><tbody>${locRows}</tbody></table>
+    </div>
+    <div class="report-chart-card">
+      <div class="report-chart-title" style="margin-bottom:10px;">Key Insights</div>
+      ${insights.map(ins=>`<div class="insight-item"><div style="width:28px;height:28px;border-radius:8px;background:${ins.bg};color:${ins.col};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ${ins.icon}" style="font-size:13px;"></i></div><div style="font-size:13px;color:var(--txt2);line-height:1.6;">${ins.txt}</div></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────
+function renderAnalytics(){
+  const rd=REPORT_DATA,pf=S.reportPlatform;
+  const volData=pf==='all'
+    ?[{label:'Google',color:'#4285F4',values:rd.volume.google},{label:'Yelp',color:'#d32323',values:rd.volume.yelp},{label:'Apple',color:'#9c9c96',values:rd.volume.apple}]
+    :[{label:PC[pf].l,color:pf==='google'?'#4285F4':pf==='yelp'?'#d32323':'#9c9c96',values:rd.volume[pf]}];
+  const ratingData=pf==='all'?rd.avgRating.overall:rd.avgRating[pf];
+  const locRows=L.listings.map((lst,i)=>{
+    const gp=lst.platforms.google,yp=lst.platforms.yelp,ap=lst.platforms.apple;
+    const totalRev=Object.values(lst.platforms).reduce((s,p)=>s+p.reviews,0);
+    const pending=Object.values(lst.platforms).reduce((s,p)=>s+p.pending,0);
+    const rr=Math.round(84+i);
+    return`<tr>
+      <td style="font-weight:500;">${lst.name}</td>
+      <td style="font-size:11px;color:var(--txt2);">${lst.city||''}</td>
+      <td style="text-align:center;">${gp?gp.reviews:'—'}</td><td style="text-align:center;color:var(--amber);">${gp?'&#9733;'+gp.avg.toFixed(1):'—'}</td>
+      <td style="text-align:center;">${yp?yp.reviews:'—'}</td><td style="text-align:center;color:var(--amber);">${yp?'&#9733;'+yp.avg.toFixed(1):'—'}</td>
+      <td style="text-align:center;">${ap?ap.reviews:'—'}</td><td style="text-align:center;color:var(--amber);">${ap?'&#9733;'+ap.avg.toFixed(1):'—'}</td>
+      <td style="text-align:center;font-weight:500;">${totalRev}</td>
+      <td style="text-align:center;">${pending?`<span class="badge" style="background:var(--warn-bg);color:var(--warn-fg);">${pending}</span>`:'<span style="color:var(--succ-fg);">&#10003;</span>'}</td>
+      <td style="text-align:center;color:var(--succ-fg);font-weight:500;">${rr}%</td>
+    </tr>`;
+  }).join('');
+  return`<div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+      <span style="font-size:13px;color:var(--txt2);font-weight:500;">Platform:</span>
+      <div class="pills" style="margin:0;">${['all','google','yelp','apple'].map(p=>`<button class="pill${S.reportPlatform===p?' on':''}" onclick="S.reportPlatform='${p}';renderReports()">${p==='all'?'All':PC[p].l}</button>`).join('')}</div>
+    </div>
+    <div class="report-chart-card" style="margin-bottom:16px;"><div class="report-chart-title">Review Volume by Month${pf!=='all'?' — '+PC[pf].l:''}</div>${svgBars(volData,rd.months,780,180)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="report-chart-card"><div class="report-chart-title">Response Rate (%)</div>${svgLine(rd.responseRate,390,155,'#3b6d11',rd.months,60,100)}</div>
+      <div class="report-chart-card"><div class="report-chart-title">Avg Response Time (hrs)</div>${svgLine(rd.responseTime,390,155,'#854f0b',rd.months,0,6)}</div>
+    </div>
+    <div class="report-chart-card"><div class="report-chart-title">Rating Trend${pf!=='all'?' — '+PC[pf].l:''}</div>${svgLine(ratingData,780,155,'#185fa5',rd.months,3.5,5.0)}</div>
+    <div class="report-chart-card" style="margin-top:16px;"><div class="report-chart-title" style="margin-bottom:14px;">Location Breakdown</div>
+      <div style="overflow-x:auto;"><table class="report-table" style="min-width:680px;"><thead><tr><th>Location</th><th>City</th><th colspan="2" style="text-align:center;color:#4285F4;">Google</th><th colspan="2" style="text-align:center;color:#d32323;">Yelp</th><th colspan="2" style="text-align:center;color:#9c9c96;">Apple</th><th style="text-align:center;">Total</th><th style="text-align:center;">Pending</th><th style="text-align:center;">Resp.%</th></tr></thead><tbody>${locRows}</tbody></table></div>
+    </div>
+  </div>`;
+}
+
+// ── Reports wrapper ───────────────────────────────────────────────────────
+function renderReportsInner(){
+  return`<div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div class="add-tabs">
+        <button class="add-tab${S.reportTab==='executive'?' on':''}" onclick="S.reportTab='executive';renderReports()"><i class="ti ti-briefcase" style="font-size:12px;margin-right:4px;"></i>Executive Summary</button>
+        <button class="add-tab${S.reportTab==='analytics'?' on':''}" onclick="S.reportTab='analytics';renderReports()"><i class="ti ti-chart-bar" style="font-size:12px;margin-right:4px;"></i>Analytics</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="pills" style="margin:0;">${[['month','This Month'],['30d','Last 30d'],['quarter','Quarter'],['ytd','YTD']].map(([v,l])=>`<button class="pill${S.reportPeriod===v?' on':''}" onclick="S.reportPeriod='${v}';renderReports()">${l}</button>`).join('')}</div>
+        <button class="btn" onclick="alert('PDF export coming soon')"><i class="ti ti-download"></i> Export</button>
+      </div>
+    </div>
+    ${S.reportTab==='executive'?renderExecutiveSummary():renderAnalytics()}
+  </div>`;
+}
+function renderReports(){const el=document.getElementById('reports-view');if(el)el.innerHTML=renderReportsInner();else render();}
+
+// ── Main render ───────────────────────────────────────────────────────────
+function render(){
+  if(!currentUser)return;
+  const scrollY=window.scrollY||document.documentElement.scrollTop||0;
+  const act=S.reviews.filter(r=>r.st==='pending'||r.st==='draft').length;
+  document.getElementById('app').innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div><div id="brand-header">${brandHeaderHTML()}</div><p style="font-size:13px;color:var(--txt2);margin-top:4px;"><i class="ti ti-building" style="font-size:12px;"></i> Google Business &nbsp;&#183;&nbsp; <i class="ti ti-device-mobile" style="font-size:12px;"></i> Apple &nbsp;&#183;&nbsp; <i class="ti ti-map-pin" style="font-size:12px;"></i> Yelp</p></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="badge" style="background:${act?'var(--warn-bg)':'var(--succ-bg)'};color:${act?'var(--warn-fg)':'var(--succ-fg)'};font-size:13px;padding:5px 14px;">${act?`${act} review${act!==1?'s':''} need action`:'All caught up &#10003;'}</span>
+      <div class="user-chip">${userAvatarHTML(26)}<div><div style="font-size:13px;font-weight:500;line-height:1.2;">${currentUser.name}</div><div style="display:flex;align-items:center;gap:5px;margin-top:1px;">${providerTag()}<span style="font-size:11px;color:var(--txt3);">${currentUser.email}</span></div></div><button onclick="signOut()" title="Sign out" style="background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 4px;margin-left:4px;"><i class="ti ti-logout" style="font-size:14px;"></i></button></div>
+    </div>
+  </div>
+  <div class="tabs">
+    ${[['listings','Listings','ti-folder'],['dashboard','Dashboard','ti-home'],['reviews','Reviews','ti-message-dots'],['reports','Reports','ti-chart-bar'],['templates','Templates','ti-template'],['ai-voice','Brand Voice','ti-sparkles'],['brand','Brand Guide','ti-paint']].map(([v,l,ic])=>
+      `<button class="tab${S.tab===v?' on':''}" onclick="setTab('${v}')"><i class="ti ${ic}" style="font-size:14px;margin-right:5px;"></i>${l}${v==='reviews'&&act?` <span style="background:var(--warn-fg);color:var(--bg);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:3px;">${act}</span>`:''}</button>`
+    ).join('')}
+  </div>
+  <div id="tab-content">
+    ${S.tab==='listings'?`<div id="listings-view"><div class="listings-layout">${renderListingsInner()}</div></div>`:S.tab==='dashboard'?renderDashboard():S.tab==='reviews'?renderReviews():S.tab==='reports'?`<div id="reports-view">${renderReportsInner()}</div>`:S.tab==='templates'?renderTemplates():S.tab==='ai-voice'?renderBrandVoice():renderBrandGuide()}
+  </div>`;
+  requestAnimationFrame(()=>window.scrollTo(0,scrollY));
+}
+
+// ── Action handlers ───────────────────────────────────────────────────────
+window.setTab=v=>{S.tab=v;render();};
+window.setFilter=(k,v)=>{S[k]=v;render();};
+window.selTpl=(rid,v)=>{S.sel[rid]=v?parseInt(v):null;render();};
+window.setTone=t=>{const p=document.getElementById('cp'),s=document.getElementById('cs'),sg=document.getElementById('csg'),n=document.getElementById('cn');if(p)S.cfg.prompt=p.value;if(s)S.cfg.support=s.value;if(sg)S.cfg.sig=sg.value;if(n)S.cfg.nameOn=n.checked;S.cfg.tone=t;render();};
+window.sendReply=rid=>{const rv=S.reviews.find(r=>r.id===rid),t=S.templates.find(t=>t.id===S.sel[rid]);if(!t)return;rv.reply=t.tx.replace(/\{name\}/g,rv.nm.split(' ')[0]);rv.st='posted';delete S.sel[rid];updateReviewCard(rid);};
+// ── AI helper ────────────────────────────────────────────────────────────
+// Artifact: direct Anthropic call (auth auto-injected, no key needed)
+// Railway:  direct call fails → falls back to /api/ai/draft backend proxy
+async function callAI(sys, userMsg){
+  // 1. Direct Anthropic call — works in Claude artifact
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:userMsg}]})
+    });
+    if(res.ok){
+      const d=await res.json();
+      if(d.content&&d.content[0]) return d.content[0].text;
+    }
+  }catch(e){}
+
+  // 2. Backend proxy — works on Railway (uses server-side ANTHROPIC_API_KEY)
+  try{
+    const res=await fetch('/api/ai/draft',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system:sys,userMessage:userMsg})
+    });
+    if(res.ok){const d=await res.json();if(d.draft)return d.draft;}
+  }catch(e){}
+
+  throw new Error('Could not reach AI — check ANTHROPIC_API_KEY on Railway');
+}
+
+window.genAI=async rid=>{
+  const rv=S.reviews.find(r=>r.id===rid);
+  if(!rv)return;
+  S.gen[rid]=true;updateReviewCard(rid);
+  try{
+    const c=getBrandConfig(rv);
+    const sys=[
+      c.prompt,
+      c.nameOn?'Address the reviewer by their first name.':'',
+      c.support?'Always include this contact: '+c.support:'',
+      'Sign off with: — '+c.sig
+    ].filter(Boolean).join('\n\n');
+    const userMsg='Review ('+rv.rt+'/5 stars from '+rv.nm+'): "'+rv.tx+'"\n\nWrite a professional response.';
+    rv.draft=await callAI(sys,userMsg);
+    rv.st='draft';
+  }catch(e){
+    rv.draft='Error: '+e.message;
+    rv.st='draft';
+  }
+  delete S.gen[rid];updateReviewCard(rid);
+};
+window.refineAI=async(rid,key,ins)=>{
+  const rv=S.reviews.find(r=>r.id===rid);
+  const el=document.getElementById('ed-'+rid);
+  const draft=el?el.value:(rv.draft||'');
+  S.refining[rid]=key; updateReviewCard(rid);
+  const c=getBrandConfig(rv);
+  const sysParts=[c.prompt];
+  if(c.nameOn) sysParts.push('Personalize by addressing the reviewer by their first name.');
+  if(c.support) sysParts.push('Always include this support contact: '+c.support);
+  sysParts.push('Close with: — '+c.sig);
+  const sys=sysParts.join('\n\n');
+  const msg='Original review ('+rv.rt+'/5):\n"'+rv.tx+'"\n\nCurrent draft:\n"'+draft+'"\n\n'+ins+'\n\nReturn only the revised response, nothing else.';
+  try{
+    rv.draft=await callAI(sys,msg);
+  }catch(e){rv.draft='Error — please try again.';}
+  delete S.refining[rid]; updateReviewCard(rid);
+};
+// Update just one review card without re-rendering the whole page
+function updateReviewCard(rid){
+  const rv=S.reviews.find(r=>r.id===rid);
+  if(!rv)return;
+  const el=document.getElementById('rv-'+rid);
+  if(el){el.outerHTML=reviewCard(rv);}
+  // Also update the pending count badge in the header
+  const badge=document.getElementById('pending-badge');
+  const act=S.reviews.filter(r=>r.st==='pending'||r.st==='draft').length;
+  if(badge)badge.textContent=act+' reviews need action';
+}
+
+window.approveReply=rid=>{const rv=S.reviews.find(r=>r.id===rid),el=document.getElementById('ed-'+rid);rv.reply=el?el.value:rv.draft;rv.st='posted';rv.draft=null;updateReviewCard(rid);};
+window.discardDraft=rid=>{const rv=S.reviews.find(r=>r.id===rid);rv.draft=null;rv.st='pending';updateReviewCard(rid);};
+window.showTemplateForm=show=>{const el=document.getElementById('tform');if(el)el.style.display=show?'block':'none';};
+window.saveTemplate=()=>{const n=document.getElementById('tn')?.value.trim(),t=document.getElementById('tt')?.value.trim();if(!n||!t)return;S.templates.push({id:Date.now(),nm:n,tx:t});render();};
+window.deleteTemplate=id=>{S.templates=S.templates.filter(t=>t.id!==id);render();};
+window.saveBrandConfig=fid=>{
+  const email=document.getElementById('bc-email-'+fid)?.value.trim()||'';
+  const sig=document.getElementById('bc-sig-'+fid)?.value.trim()||'';
+  if(!email&&!sig){delete S.brandConfigs[fid];}
+  else{S.brandConfigs[fid]={support:email,sig};}
+  localStorage.setItem('rp_brandconfigs',JSON.stringify(S.brandConfigs));
+  const ok=document.getElementById('bc-ok-'+fid);
+  if(ok){ok.style.display='inline';setTimeout(()=>{ok.style.display='none';render();},1500);}
+};
+window.clearBrandConfig=fid=>{
+  delete S.brandConfigs[fid];
+  localStorage.setItem('rp_brandconfigs',JSON.stringify(S.brandConfigs));
+  render();
+};
+window.saveCfg=()=>{S.cfg.prompt=document.getElementById('cp')?.value||S.cfg.prompt;S.cfg.support=document.getElementById('cs')?.value||'';S.cfg.sig=document.getElementById('csg')?.value||'';S.cfg.nameOn=document.getElementById('cn')?.checked??S.cfg.nameOn;const ok=document.getElementById('svok');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}};
+window.selectFolder=fid=>{L.selectedFolderId=fid;L.showNewListing=false;renderListings();};
+window.toggleExpand=(e,fid)=>{e.stopPropagation();L.expanded[fid]=!L.expanded[fid];renderListings();};
+window.deleteFolder=(e,fid)=>{
+  if(e&&e.stopPropagation)e.stopPropagation();
+  L.selectedFolderId=fid;L.confirmingDelete=true;renderListings();
+};
+window.createFolder=()=>{
+  const name=(L.newFolder.name||'').trim();
+  if(!name)return;
+  L.folders.push({id:'f'+Date.now(),name,type:'brand',parentId:L.newFolder.parentId||null});
+  L.showNewFolder=false;
+  L.newFolder={name:'',type:'brand',parentId:null};
+  saveLState();renderListings();
+};
+window.confirmDeleteFolder=()=>{
+  const fid=L.selectedFolderId;if(!fid)return;
+  L.listings.forEach(l=>{if(l.folderId===fid)l.folderId=null;});
+  const rm=id=>{L.folders.filter(f=>f.parentId===id).forEach(f=>rm(f.id));L.folders=L.folders.filter(f=>f.id!==id);};
+  rm(fid);L.selectedFolderId=null;L.confirmingDelete=false;saveLState();renderListings();
+};
+window.startRename=(e,fid)=>{e.stopPropagation();L.editingFolderId=fid;renderListings();setTimeout(()=>{const el=document.getElementById('rename-'+fid);if(el){el.focus();el.select();}},50);};
+window.saveRename=fid=>{const el=document.getElementById('rename-'+fid);if(!el)return;const name=el.value.trim();if(name){const f=L.folders.find(f=>f.id===fid);if(f)f.name=name;}L.editingFolderId=null;saveLState();setTimeout(()=>renderListings(),0);};
+window.moveListing=(lid,folderId)=>{const lst=L.listings.find(l=>l.id===lid);if(lst)lst.folderId=folderId||null;saveLState();renderListings();};
+window.createListing=()=>{
+  const nameEl=document.getElementById('nl-name');
+  const name=(nameEl?.value||L.newListing.name).trim();
+  if(!name){nameEl?.focus();return;}
+  const addr=(document.getElementById('nl-addr')?.value||'').trim();
+  const city=(document.getElementById('nl-city')?.value||'').trim();
+  const phone=(document.getElementById('nl-phone')?.value||'').trim();
+  const category=(document.getElementById('nl-cat')?.value||'').trim();
+  const plats={};['google','yelp','apple'].forEach(p=>{if(L.newListing.platforms[p])plats[p]={reviews:0,avg:0.0,pending:0,status:'connected'};});
+  if(!Object.keys(plats).length){alert('Select at least one platform.');return;}
+  L.listings.push({id:'l'+Date.now(),name,address:addr,city,phone,category,folderId:L.newListing.folderId,lastSynced:'Just added',platforms:plats});
+  L.showNewListing=false;L.newListing={name:'',address:'',city:'',phone:'',category:'',platforms:{google:false,yelp:false,apple:false},folderId:null};
+  saveLState();renderListings();
+};
+window.simulateGBPConnect=()=>{L.importState='connecting';renderListings();setTimeout(()=>{L.importState='discovered';renderListings();},1800);};
+window.toggleImportSel=gbpId=>{L.importSelected[gbpId]=!L.importSelected[gbpId];renderListings();};
+window.toggleSelectAll=checked=>{const existingIds=new Set(L.listings.map(l=>l.gbpLocationId).filter(Boolean));MOCK_GBP.filter(l=>!existingIds.has(l.gbpId)).forEach(l=>{L.importSelected[l.gbpId]=checked;});renderListings();};
+window.importSelectedLocations=()=>{
+  const existingIds=new Set(L.listings.map(l=>l.gbpLocationId).filter(Boolean));
+  MOCK_GBP.filter(l=>!existingIds.has(l.gbpId)&&L.importSelected[l.gbpId]).forEach(loc=>{
+    L.listings.push({id:'l'+Date.now()+Math.random().toString(36).slice(2,6),name:loc.name,address:loc.address,city:'',phone:loc.phone,category:loc.category,gbpLocationId:loc.gbpId,folderId:L.selectedFolderId||null,lastSynced:'Just imported',platforms:{google:{reviews:loc.reviews,avg:4.2,pending:0,status:'connected'}}});
+  });
+  L.importState='idle';L.importSelected={};L.showNewListing=false;L.addTab='manual';saveLState();renderListings();
+};
+</script>
+</body>
+</html>
