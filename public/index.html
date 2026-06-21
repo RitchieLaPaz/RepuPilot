@@ -190,7 +190,11 @@ function updateAuthDisplay(){
 // ── Auth ──────────────────────────────────────────────────────────────────
 let currentUser=null,msalInstance=null;
 function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('main-app').style.display='none';updateAuthDisplay();}
-function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('main-app').style.display='block';}
+function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
+  document.addEventListener('click',()=>{if(S.userMenuOpen){S.userMenuOpen=false;render();}},{once:true});
+}
 function showLoading(m){document.getElementById('auth-btns').style.display='none';document.getElementById('auth-loading').style.display='flex';document.getElementById('auth-loading-msg').textContent=m||'Signing you in\u2026';}
 function hideLoading(){document.getElementById('auth-btns').style.display='block';document.getElementById('auth-loading').style.display='none';}
 function showAuthErr(m){const e=document.getElementById('auth-err');e.textContent=m;e.style.display='block';hideLoading();}
@@ -311,7 +315,7 @@ function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msal
 const S={
   tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
-  users:null,usersLoading:false,invites:null,newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
+  users:null,usersLoading:false,invites:null,userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
     {id:1,pf:'google',nm:'Sarah M.',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
     {id:2,pf:'yelp',nm:'James K.',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
@@ -1021,7 +1025,59 @@ function render(){
     <div><div id="brand-header">${brandHeaderHTML()}</div><p style="font-size:13px;color:var(--txt2);margin-top:4px;"><i class="ti ti-building" style="font-size:12px;"></i> Google Business &nbsp;&#183;&nbsp; <i class="ti ti-device-mobile" style="font-size:12px;"></i> Apple &nbsp;&#183;&nbsp; <i class="ti ti-map-pin" style="font-size:12px;"></i> Yelp</p></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="badge" style="background:${act?'var(--warn-bg)':'var(--succ-bg)'};color:${act?'var(--warn-fg)':'var(--succ-fg)'};font-size:13px;padding:5px 14px;">${act?`${act} review${act!==1?'s':''} need action`:'All caught up &#10003;'}</span>
-      <div class="user-chip">${userAvatarHTML(26)}<div><div style="font-size:13px;font-weight:500;line-height:1.2;">${currentUser.name}</div><div style="display:flex;align-items:center;gap:5px;margin-top:1px;">${providerTag()}<span style="font-size:11px;color:var(--txt3);">${currentUser.email}</span></div></div><button onclick="signOut()" title="Sign out" style="background:none;border:none;cursor:pointer;color:var(--txt2);padding:2px 4px;margin-left:4px;"><i class="ti ti-logout" style="font-size:14px;"></i></button></div>
+<div style="position:relative;">
+        <div class="user-chip" onclick="S.userMenuOpen=!S.userMenuOpen;render()" style="cursor:pointer;user-select:none;" title="Account menu">
+          ${userAvatarHTML(26)}
+          <div><div style="font-size:13px;font-weight:500;line-height:1.2;">${currentUser.name}</div><div style="display:flex;align-items:center;gap:5px;margin-top:1px;">${providerTag()}<span style="font-size:11px;color:var(--txt3);">${currentUser.email}</span></div></div>
+          <i class="ti ti-chevron-${S.userMenuOpen?'up':'down'}" style="font-size:12px;color:var(--txt3);margin-left:2px;"></i>
+        </div>
+        ${S.userMenuOpen?`
+        <div onclick="event.stopPropagation()" style="position:absolute;top:calc(100% + 8px);right:0;width:280px;background:var(--bg);border:0.5px solid var(--brd2);border-radius:var(--r-lg);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;overflow:hidden;">
+          <!-- Header -->
+          <div style="padding:14px 16px;border-bottom:0.5px solid var(--brd);background:var(--bg2);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              ${userAvatarHTML(36)}
+              <div style="min-width:0;">
+                <div style="font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${currentUser.name}</div>
+                <div style="font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${currentUser.email}</div>
+                <div style="margin-top:3px;">${providerTag()}</div>
+              </div>
+            </div>
+          </div>
+          <!-- Account Management -->
+          <div style="padding:8px;">
+            <div style="font-size:10px;font-weight:500;color:var(--txt3);letter-spacing:.5px;padding:4px 8px 6px;">ACCOUNT</div>
+            ${currentUser.provider==='local'?`
+            <!-- Change password form -->
+            <div style="padding:8px;border-radius:var(--r-md);background:var(--bg2);margin-bottom:4px;">
+              <div style="font-size:12px;font-weight:500;margin-bottom:10px;"><i class="ti ti-lock" style="font-size:12px;margin-right:5px;"></i>Change password</div>
+              <input type="password" placeholder="Current password" value="${S.pwForm.current}"
+                oninput="S.pwForm.current=this.value"
+                style="margin-bottom:6px;font-size:12px;padding:6px 10px;">
+              <input type="password" placeholder="New password (min 8 chars)" value="${S.pwForm.next}"
+                oninput="S.pwForm.next=this.value"
+                style="margin-bottom:6px;font-size:12px;padding:6px 10px;">
+              <input type="password" placeholder="Confirm new password" value="${S.pwForm.confirm}"
+                oninput="S.pwForm.confirm=this.value"
+                style="margin-bottom:8px;font-size:12px;padding:6px 10px;">
+              ${S.pwForm.error?`<div style="font-size:11px;color:var(--dang-fg);margin-bottom:6px;">${S.pwForm.error}</div>`:''}
+              ${S.pwForm.ok?`<div style="font-size:11px;color:var(--succ-fg);margin-bottom:6px;"><i class="ti ti-check"></i> Password updated!</div>`:''}
+              <button class="btn p" style="width:100%;justify-content:center;font-size:12px;padding:7px;" onclick="changePassword()" ${S.pwForm.loading?'disabled':''}>
+                <i class="ti ti-${S.pwForm.loading?'refresh spin':'check'}"></i> ${S.pwForm.loading?'Updating…':'Update password'}
+              </button>
+            </div>`:`
+            <div style="padding:6px 8px;font-size:12px;color:var(--txt2);border-radius:var(--r-md);">
+              <i class="ti ti-brand-google" style="font-size:12px;margin-right:5px;"></i>Password managed by Google
+            </div>`}
+          </div>
+          <!-- Sign out -->
+          <div style="padding:8px;border-top:0.5px solid var(--brd);">
+            <button onclick="signOut()" style="width:100%;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r-md);border:none;background:none;cursor:pointer;font-size:13px;color:var(--dang-fg);font-family:inherit;font-weight:500;">
+              <i class="ti ti-logout" style="font-size:14px;"></i> Sign out
+            </button>
+          </div>
+        </div>`:''}
+      </div>
     </div>
   </div>
   <div class="tabs">
@@ -1050,6 +1106,21 @@ async function loadUsers(){
   }catch(e){S.users=[];S.invites=[];}
   S.usersLoading=false;renderSettings();
 }
+window.changePassword=async()=>{
+  const{current,next,confirm}=S.pwForm;
+  S.pwForm.error='';S.pwForm.ok=false;
+  if(!current||!next||!confirm){S.pwForm.error='All fields required';render();return;}
+  if(next.length<8){S.pwForm.error='New password must be at least 8 characters';render();return;}
+  if(next!==confirm){S.pwForm.error='New passwords do not match';render();return;}
+  S.pwForm.loading=true;render();
+  try{
+    const res=await fetch('/api/auth/local/change-password',{method:'POST',headers:authHeaders(),body:JSON.stringify({currentPassword:current,newPassword:next})});
+    const data=await res.json();
+    if(!res.ok){S.pwForm.error=data.error||'Failed to update password';S.pwForm.loading=false;render();return;}
+    S.pwForm={current:'',next:'',confirm:'',loading:false,error:'',ok:true};render();
+    setTimeout(()=>{S.pwForm.ok=false;render();},3000);
+  }catch(e){S.pwForm.error='Network error';S.pwForm.loading=false;render();}
+};
 window.updateUserRole=async(uid,role)=>{
   try{
     const res=await fetch('/api/auth/users/'+uid,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({role})});
