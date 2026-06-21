@@ -16,6 +16,9 @@ const reviewRoutes    = require('./routes/reviews');
 
 const app = express();
 
+// Trust Railway's proxy — required for express-rate-limit behind a load balancer
+app.set('trust proxy', 1);
+
 // ── Security middleware ────────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
 
