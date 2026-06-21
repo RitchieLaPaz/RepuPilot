@@ -779,11 +779,15 @@ function renderSettingsInner(){
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn p" onclick="sendInvite()" ${S.invite.sending?'disabled':''}>
-          <i class="ti ti-${S.invite.sending?'refresh spin':'send'}"></i> ${S.invite.sending?'Sending…':'Send invite'}
+          <i class="ti ti-${S.invite.sending?'refresh spin':'link'}"></i> ${S.invite.sending?'Creating…':'Create invite link'}
         </button>
-        ${S.invite.sent?'<span style="font-size:13px;color:var(--succ-fg);"><i class="ti ti-check"></i> Invite sent!</span>':''}
         ${S.invite.error?`<span style="font-size:13px;color:var(--dang-fg);">${S.invite.error}</span>`:''}
       </div>
+      ${S.invite.sent&&S.invite.url?`<div style="margin-top:14px;padding:12px 14px;background:var(--succ-bg);border-radius:var(--r-md);">
+        <div style="font-size:12px;font-weight:500;color:var(--succ-fg);margin-bottom:8px;"><i class="ti ti-check"></i> Link ready — share via Slack or email</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;"><code style="flex:1;font-size:11px;background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-md);padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2);">${S.invite.url}</code><button class="btn p" onclick="this.textContent='✓ Copied!';navigator.clipboard.writeText('${S.invite.url}');setTimeout(()=>this.textContent='Copy link',2000)" style="white-space:nowrap;flex-shrink:0;">Copy link</button></div>
+        <div style="font-size:11px;color:var(--txt2);">Expires in 7 days</div>
+      </div>`:''}
     </div>
     ${pendingInvites.length?`
     <div style="font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin-bottom:8px;">PENDING INVITES</div>
@@ -1056,17 +1060,23 @@ window.sendInvite=async()=>{
   const name=document.getElementById('inv-name')?.value.trim();
   const email=document.getElementById('inv-email')?.value.trim();
   const role=S.invite.role||'member';
-  S.invite.error='';S.invite.sent=false;
+  S.invite.error='';S.invite.sent=false;S.invite.url='';
   if(!name||!email){S.invite.error='Name and email required';renderSettings();return;}
   S.invite.sending=true;renderSettings();
   try{
     const res=await fetch('/api/auth/invite',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,email,role})});
     const data=await res.json();
-    if(!res.ok){S.invite.error=data.error||'Failed to send invite';S.invite.sending=false;renderSettings();return;}
-    S.invite={name:'',email:'',role:'member',sending:false,sent:true,error:''};
+    if(!res.ok){S.invite.error=data.error||'Failed to create invite';S.invite.sending=false;renderSettings();return;}
+    S.invite={name:'',email:'',role:'member',sending:false,sent:true,error:'',url:data.inviteUrl||''};
     S.invites=null;loadUsers();
-    setTimeout(()=>{S.invite.sent=false;renderSettings();},4000);
+    setTimeout(()=>{S.invite.sent=false;S.invite.url='';renderSettings();},30000);
   }catch(e){S.invite.error='Network error';S.invite.sending=false;renderSettings();}
+};
+window.copyInviteLink=url=>{
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn=document.getElementById('copy-invite-btn');
+    if(btn){btn.textContent='✓ Copied!';setTimeout(()=>{btn.textContent='Copy link';},2000);}
+  });
 };
 window.revokeInvite=async(id)=>{
   try{
