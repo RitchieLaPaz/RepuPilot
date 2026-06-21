@@ -833,19 +833,34 @@ window.setFilter=(k,v)=>{S[k]=v;render();};
 window.selTpl=(rid,v)=>{S.sel[rid]=v?parseInt(v):null;render();};
 window.setTone=t=>{const p=document.getElementById('cp'),s=document.getElementById('cs'),sg=document.getElementById('csg'),n=document.getElementById('cn');if(p)S.cfg.prompt=p.value;if(s)S.cfg.support=s.value;if(sg)S.cfg.sig=sg.value;if(n)S.cfg.nameOn=n.checked;S.cfg.tone=t;render();};
 window.sendReply=rid=>{const rv=S.reviews.find(r=>r.id===rid),t=S.templates.find(t=>t.id===S.sel[rid]);if(!t)return;rv.reply=t.tx.replace(/\{name\}/g,rv.nm.split(' ')[0]);rv.st='posted';delete S.sel[rid];updateReviewCard(rid);};
-// ── AI helper — direct Anthropic call (artifact handles auth automatically) ─
+// ── AI helper ────────────────────────────────────────────────────────────
+// Artifact: direct Anthropic call (auth auto-injected, no key needed)
+// Railway:  direct call fails → falls back to /api/ai/draft backend proxy
 async function callAI(sys, userMsg){
+  // 1. Direct Anthropic call — works in Claude artifact
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:sys,messages:[{role:'user',content:userMsg}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:userMsg}]})
     });
-    const d=await res.json();
-    if(d.content&&d.content[0]) return d.content[0].text;
-    if(d.error) throw new Error(d.error.message||'API error');
-  }catch(e){throw e;}
-  throw new Error('No response from API');
+    if(res.ok){
+      const d=await res.json();
+      if(d.content&&d.content[0]) return d.content[0].text;
+    }
+  }catch(e){}
+
+  // 2. Backend proxy — works on Railway (uses server-side ANTHROPIC_API_KEY)
+  try{
+    const res=await fetch('/api/ai/draft',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system:sys,userMessage:userMsg})
+    });
+    if(res.ok){const d=await res.json();if(d.draft)return d.draft;}
+  }catch(e){}
+
+  throw new Error('Could not reach AI — check ANTHROPIC_API_KEY on Railway');
 }
 
 window.genAI=async rid=>{
