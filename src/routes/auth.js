@@ -31,9 +31,9 @@ const sendEmail = async ({ to, subject, html }) => {
   if (!apiKey) { logger.warn('RESEND_API_KEY not set — email not sent'); return; }
   const { Resend } = require('resend');
   const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({ from, to, subject, html });
-  if (error) logger.error('Resend error', { error });
-  else logger.info('Email sent', { to, subject });
+  const { data, error } = await resend.emails.send({ from, to, subject, html });
+  if (error) logger.error('Resend error', { message: error.message, name: error.name, to, from });
+  else logger.info('Email sent', { to, subject, id: data?.id });
 };
 
 // ── Invite email template ─────────────────────────────────────────────────
@@ -139,20 +139,21 @@ router.post('/invite', authMiddleware, async (req, res) => {
       [email, name, role, token, req.user.userId, expiresAt]
     );
 
-    // Get inviter name
-    const { rows: inviterRows } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.userId]);
-    const inviterName = inviterRows[0]?.name || 'Your team';
-
     const inviteUrl = `${config.frontendUrl}?invite=${token}`;
 
-    await sendEmail({
-      to:      email,
-      subject: `${inviterName} invited you to RepuPilot`,
-      html:    inviteEmail({ name, inviterName, inviteUrl, expiryDays: INVITE_EXPIRY_DAYS }),
-    });
+    // Email optional — only send if RESEND_API_KEY is configured and domain is verified
+    if (process.env.RESEND_API_KEY) {
+      const { rows: inviterRows } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.userId]);
+      const inviterName = inviterRows[0]?.name || 'Your team';
+      await sendEmail({
+        to:      email,
+        subject: `${inviterName} invited you to RepuPilot`,
+        html:    inviteEmail({ name, inviterName, inviteUrl, expiryDays: INVITE_EXPIRY_DAYS }),
+      });
+    }
 
-    logger.info('Invite sent', { to: email, by: req.user.email });
-    res.status(201).json({ ok: true, message: `Invite sent to ${email}` });
+    logger.info('Invite created', { to: email, by: req.user.email, url: inviteUrl });
+    res.status(201).json({ ok: true, inviteUrl, message: `Invite link created for ${email}` });
   } catch (err) {
     logger.error('Invite error', { err: err.message });
     res.status(500).json({ error: 'Failed to send invite' });
