@@ -119,3 +119,10 @@ INSERT INTO reply_templates (name, body, min_rating, max_rating) VALUES
    'Thanks for the great review, {name}! We really appreciate your support and look forward to serving you again soon.',
    4, 5)
 ON CONFLICT DO NOTHING;
+
+-- ── Auth additions ────────────────────────────────────────────────────────
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by    UUID REFERENCES users(id);
+
+-- Index for local login lookups
+CREATE INDEX IF NOT EXISTS idx_users_email_provider ON users(email, provider);
