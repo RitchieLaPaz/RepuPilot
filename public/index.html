@@ -222,6 +222,66 @@ async function signInMicrosoft(){
     loginUser({name:r.account.name,email:r.account.username,avatar,provider:'microsoft'});
   }catch(e){if(e.errorCode==='user_cancelled'){hideLoading();return;}showAuthErr('Microsoft sign-in failed: '+(e.message||'Unknown error'));}
 }
+// ── Invite acceptance flow ───────────────────────────────────────────────
+async function showInviteAccept(token){
+  // Verify token with backend
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('main-app').style.display='none';
+  document.getElementById('auth-btns').style.display='none';
+  document.getElementById('auth-loading').style.display='flex';
+  document.getElementById('auth-loading-msg').textContent='Verifying your invite…';
+  try{
+    const res=await fetch('/api/auth/invite/'+token);
+    const data=await res.json();
+    if(!res.ok){
+      document.getElementById('auth-loading').style.display='none';
+      document.getElementById('auth-err').textContent=data.error||'Invalid invite link';
+      document.getElementById('auth-err').style.display='block';
+      document.getElementById('auth-btns').style.display='block';
+      return;
+    }
+    // Show password setup form
+    document.getElementById('auth-loading').style.display='none';
+    document.getElementById('auth-btns').innerHTML=`
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:20px;font-weight:500;margin-bottom:6px;">Welcome, ${data.name}!</div>
+        <div style="font-size:13px;color:var(--txt2);">Set a password to activate your account</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px;">${data.email}</div>
+      </div>
+      <div style="margin-bottom:10px;"><input type="password" id="inv-pass" placeholder="Choose a password (min 8 chars)" style="font-size:14px;" autocomplete="new-password"></div>
+      <div style="margin-bottom:16px;"><input type="password" id="inv-pass2" placeholder="Confirm password" style="font-size:14px;" autocomplete="new-password"></div>
+      <button class="sso-btn" style="background:var(--txt);color:var(--bg);font-weight:500;margin-bottom:0;" onclick="acceptInvite('${token}')"><i class="ti ti-check" style="font-size:14px;"></i> Activate account</button>
+    `;
+    document.getElementById('auth-btns').style.display='block';
+    document.getElementById('auth-welcome-msg').textContent="You've been invited to RepuPilot";
+    setTimeout(()=>document.getElementById('inv-pass')?.focus(),100);
+  }catch(e){
+    document.getElementById('auth-loading').style.display='none';
+    document.getElementById('auth-err').textContent='Could not verify invite. Please try again.';
+    document.getElementById('auth-err').style.display='block';
+    document.getElementById('auth-btns').style.display='block';
+  }
+}
+
+async function acceptInvite(token){
+  const pass=document.getElementById('inv-pass')?.value;
+  const pass2=document.getElementById('inv-pass2')?.value;
+  const errEl=document.getElementById('auth-err');
+  errEl.style.display='none';
+  if(!pass||pass.length<8){errEl.textContent='Password must be at least 8 characters';errEl.style.display='block';return;}
+  if(pass!==pass2){errEl.textContent='Passwords do not match';errEl.style.display='block';return;}
+  showLoading('Activating your account…');
+  try{
+    const res=await fetch('/api/auth/invite/'+token+'/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});
+    const data=await res.json();
+    if(!res.ok){hideLoading();errEl.textContent=data.error||'Activation failed';errEl.style.display='block';return;}
+    // Clean URL and sign in
+    window.history.replaceState({},'',window.location.pathname);
+    sessionStorage.setItem('rp_token',data.token);
+    loginUser(data.user);
+  }catch(e){hideLoading();errEl.textContent='Activation failed: '+e.message;errEl.style.display='block';}
+}
+
 function signInDemo(){loginUser({name:'Ritchie Demo',email:'ritchie@yourcompany.com',avatar:null,provider:'demo'});}
 async function signInLocal(){
   const email=document.getElementById('local-email')?.value.trim();
@@ -238,13 +298,20 @@ async function signInLocal(){
 }
 function loginUser(user){currentUser=user;sessionStorage.setItem('rh_user',JSON.stringify(user));showApp();render();}
 function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msalInstance){msalInstance.logoutPopup().catch(()=>{});msalInstance=null;}if(typeof google!=='undefined'){try{google.accounts.id.disableAutoSelect();}catch(e){}}showAuth();document.getElementById('auth-err').style.display='none';}
-(function(){const s=sessionStorage.getItem('rh_user');if(s){try{loginUser(JSON.parse(s));}catch(e){showAuth();}}else{showAuth();}})();
+(function(){
+  // Check for invite token in URL
+  const params=new URLSearchParams(window.location.search);
+  const inviteToken=params.get('invite');
+  if(inviteToken){showInviteAccept(inviteToken);return;}
+  const s=sessionStorage.getItem('rh_user');
+  if(s){try{loginUser(JSON.parse(s));}catch(e){showAuth();}}else{showAuth();}
+})();
 
 // ── App state ─────────────────────────────────────────────────────────────
 const S={
   tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
-  users:null,usersLoading:false,newUser:{name:'',email:'',password:'',role:'member'},
+  users:null,usersLoading:false,invites:null,newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
     {id:1,pf:'google',nm:'Sarah M.',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
     {id:2,pf:'yelp',nm:'James K.',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
@@ -694,28 +761,48 @@ function renderSettingsInner(){
       </div>`;
     }).join('');
 
+  // Pending invites
+  const pendingInvites=S.invites?S.invites.filter(i=>!i.accepted_at&&new Date(i.expires_at)>new Date()):[];
+
   const createForm=isAdmin?`
-    <div style="font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin:24px 0 10px;">CREATE LOCAL ACCOUNT <span style="font-weight:400;">— for external users without Google Workspace</span></div>
-    <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin:24px 0 10px;">INVITE USER <span style="font-weight:400;">— they receive an email to set their own password</span></div>
+    <div class="card" style="margin-bottom:12px;">
       <div class="grid2" style="margin-bottom:0;">
-        <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Full name <span style="color:var(--dang-fg);">*</span></div><input type="text" id="nu-name" placeholder="Jane Smith" oninput="S.newUser.name=this.value"></div>
-        <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Email <span style="color:var(--dang-fg);">*</span></div><input type="email" id="nu-email" placeholder="jane@external.com" oninput="S.newUser.email=this.value"></div>
+        <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Full name <span style="color:var(--dang-fg);">*</span></div><input type="text" id="inv-name" placeholder="Jane Smith" oninput="S.invite.name=this.value" value="${S.invite.name}"></div>
+        <div style="margin-bottom:10px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Email <span style="color:var(--dang-fg);">*</span></div><input type="email" id="inv-email" placeholder="jane@external.com" oninput="S.invite.email=this.value" value="${S.invite.email}"></div>
       </div>
-      <div class="grid2" style="margin-bottom:0;">
-        <div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Temporary password <span style="color:var(--dang-fg);">*</span></div><input type="password" id="nu-pass" placeholder="Min 8 characters" oninput="S.newUser.password=this.value"></div>
-        <div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Role</div>
-          <select onchange="S.newUser.role=this.value">
-            <option value="member">Member</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
+      <div style="margin-bottom:14px;"><div style="font-size:12px;color:var(--txt2);margin-bottom:4px;">Role</div>
+        <select onchange="S.invite.role=this.value">
+          <option value="member"${S.invite.role==='member'?' selected':''}>Member</option>
+          <option value="admin"${S.invite.role==='admin'?' selected':''}>Admin</option>
+        </select>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn p" onclick="createLocalUser()"><i class="ti ti-user-plus"></i> Create account</button>
-        <span id="nu-ok" style="font-size:13px;color:var(--succ-fg);display:none;"><i class="ti ti-check"></i> Account created!</span>
-        <span id="nu-err" style="font-size:13px;color:var(--dang-fg);display:none;"></span>
+        <button class="btn p" onclick="sendInvite()" ${S.invite.sending?'disabled':''}>
+          <i class="ti ti-${S.invite.sending?'refresh spin':'send'}"></i> ${S.invite.sending?'Sending…':'Send invite'}
+        </button>
+        ${S.invite.sent?'<span style="font-size:13px;color:var(--succ-fg);"><i class="ti ti-check"></i> Invite sent!</span>':''}
+        ${S.invite.error?`<span style="font-size:13px;color:var(--dang-fg);">${S.invite.error}</span>`:''}
       </div>
-    </div>`:'';
+    </div>
+    ${pendingInvites.length?`
+    <div style="font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:.5px;margin-bottom:8px;">PENDING INVITES</div>
+    ${pendingInvites.map(inv=>{
+      const daysLeft=Math.ceil((new Date(inv.expires_at)-new Date())/86400000);
+      return`<div class="card" style="margin-bottom:8px;padding:10px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:13px;font-weight:500;">${inv.name} <span style="font-size:11px;color:var(--txt3);">— ${inv.email}</span></div>
+            <div style="font-size:11px;color:var(--txt2);margin-top:2px;">
+              <span class="badge" style="background:var(--bg2);color:var(--txt2);">${inv.role}</span>
+              &nbsp;Expires in ${daysLeft} day${daysLeft!==1?'s':''}
+            </div>
+          </div>
+          <button class="btn d" style="font-size:11px;padding:3px 10px;" onclick="revokeInvite('${inv.id}')"><i class="ti ti-x"></i> Revoke</button>
+        </div>
+      </div>`;
+    }).join('')}`:''}
+  `:'';
 
   return`<div style="max-width:620px;">
     <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Settings</div>
@@ -950,15 +1037,41 @@ window.setTab=v=>{S.tab=v;if(v==='settings'&&!S.users&&!S.usersLoading)loadUsers
 async function loadUsers(){
   S.usersLoading=true;renderSettings();
   try{
-    const res=await fetch('/api/auth/users',{headers:authHeaders()});
-    if(res.ok){S.users=await res.json();}else{S.users=[];}
-  }catch(e){S.users=[];}
+    const [ur,ir]=await Promise.all([
+      fetch('/api/auth/users',{headers:authHeaders()}),
+      fetch('/api/auth/invites',{headers:authHeaders()})
+    ]);
+    S.users=ur.ok?await ur.json():[];
+    S.invites=ir.ok?await ir.json():[];
+  }catch(e){S.users=[];S.invites=[];}
   S.usersLoading=false;renderSettings();
 }
 window.updateUserRole=async(uid,role)=>{
   try{
     const res=await fetch('/api/auth/users/'+uid,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({role})});
     if(res.ok&&S.users){const u=S.users.find(u=>u.id===uid);if(u)u.role=role;renderSettings();}
+  }catch(e){}
+};
+window.sendInvite=async()=>{
+  const name=document.getElementById('inv-name')?.value.trim();
+  const email=document.getElementById('inv-email')?.value.trim();
+  const role=S.invite.role||'member';
+  S.invite.error='';S.invite.sent=false;
+  if(!name||!email){S.invite.error='Name and email required';renderSettings();return;}
+  S.invite.sending=true;renderSettings();
+  try{
+    const res=await fetch('/api/auth/invite',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,email,role})});
+    const data=await res.json();
+    if(!res.ok){S.invite.error=data.error||'Failed to send invite';S.invite.sending=false;renderSettings();return;}
+    S.invite={name:'',email:'',role:'member',sending:false,sent:true,error:''};
+    S.invites=null;loadUsers();
+    setTimeout(()=>{S.invite.sent=false;renderSettings();},4000);
+  }catch(e){S.invite.error='Network error';S.invite.sending=false;renderSettings();}
+};
+window.revokeInvite=async(id)=>{
+  try{
+    await fetch('/api/auth/invites/'+id,{method:'DELETE',headers:authHeaders()});
+    S.invites=null;loadUsers();
   }catch(e){}
 };
 window.createLocalUser=async()=>{
