@@ -322,14 +322,14 @@ const S={
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
   users:null,usersLoading:false,invites:null,userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
-    {id:1,pf:'google',nm:'Sarah M.',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
-    {id:2,pf:'yelp',nm:'James K.',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
-    {id:3,pf:'apple',nm:'Rachel T.',rt:4,tx:"Great app, very intuitive. Would love dark mode \u2014 that would make it perfect!",dt:'Jun 14',st:'pending',draft:null,reply:null},
-    {id:4,pf:'google',nm:'David L.',rt:4,tx:"Really good service. A couple of minor hiccups but staff resolved them quickly.",dt:'Jun 13',st:'posted',draft:null,reply:"Hi David, thank you for the kind words! We're glad our team sorted things out quickly. Hope to see you again soon! \u2014 The Team"},
-    {id:5,pf:'google',nm:'Mike B.',rt:1,tx:"Terrible experience. Waited 45 minutes, nobody helped. When I got assistance the staff was dismissive.",dt:'Jun 13',st:'pending',draft:null,reply:null},
-    {id:6,pf:'yelp',nm:'Jessica W.',rt:2,tx:"Quality has gone downhill. Product looked nothing like advertised. Very disappointed.",dt:'Jun 12',st:'pending',draft:null,reply:null},
-    {id:7,pf:'apple',nm:'Tom R.',rt:3,tx:"App keeps crashing on iOS 17.4. Really frustrating when I need it for work.",dt:'Jun 12',st:'draft',draft:"Hi Tom, we sincerely apologize for the crashes on iOS 17.4 \u2014 that's unacceptable for a work-critical tool. Our team is actively prioritizing a fix. Please reach out to support@company.com. \u2014 The Team",reply:null},
-    {id:8,pf:'google',nm:'Amanda H.',rt:2,tx:"Overpriced for what you get. When I raised concerns the staff was dismissive.",dt:'Jun 11',st:'pending',draft:null,reply:null},
+    {id:1,pf:'google',nm:'Sarah M.',loc:'Eaze West Hollywood',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
+    {id:2,pf:'yelp',nm:'James K.',loc:'Green Dragon Cherry Creek',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
+    {id:3,pf:'apple',nm:'Rachel T.',loc:'Fluent Brickell',rt:4,tx:"Great app, very intuitive. Would love dark mode \u2014 that would make it perfect!",dt:'Jun 14',st:'pending',draft:null,reply:null},
+    {id:4,pf:'google',nm:'David L.',loc:'Eaze SOMA',rt:4,tx:"Really good service. A couple of minor hiccups but staff resolved them quickly.",dt:'Jun 13',st:'posted',draft:null,reply:"Hi David, thank you for the kind words! We're glad our team sorted things out quickly. Hope to see you again soon! \u2014 The Team"},
+    {id:5,pf:'google',nm:'Mike B.',loc:'Green Dragon Aurora',rt:1,tx:"Terrible experience. Waited 45 minutes, nobody helped. When I got assistance the staff was dismissive.",dt:'Jun 13',st:'pending',draft:null,reply:null},
+    {id:6,pf:'yelp',nm:'Jessica W.',loc:'Eaze Mission Valley',rt:2,tx:"Quality has gone downhill. Product looked nothing like advertised. Very disappointed.",dt:'Jun 12',st:'pending',draft:null,reply:null},
+    {id:7,pf:'apple',nm:'Tom R.',loc:'Fluent Fort Lauderdale',rt:3,tx:"App keeps crashing on iOS 17.4. Really frustrating when I need it for work.",dt:'Jun 12',st:'draft',draft:"Hi Tom, we sincerely apologize for the crashes on iOS 17.4 \u2014 that's unacceptable for a work-critical tool. Our team is actively prioritizing a fix. Please reach out to support@company.com. \u2014 The Team",reply:null},
+    {id:8,pf:'google',nm:'Amanda H.',loc:'Green Dragon Boulder',rt:2,tx:"Overpriced for what you get. When I raised concerns the staff was dismissive.",dt:'Jun 11',st:'pending',draft:null,reply:null},
   ],
   templates:[
     {id:1,nm:'Warm Thank-You',tx:"Thank you so much for the wonderful review, {name}! We're thrilled you had such a great experience. Your kind words mean the world to our team \u2014 we look forward to seeing you again!"},
@@ -341,12 +341,12 @@ const S={
 
 // ── Listings state ────────────────────────────────────────────────────────
 const MOCK_GBP=[
-  {gbpId:'accounts/123/locations/loc007',name:'SF Hayes Valley',address:'345 Hayes St, San Francisco, CA',category:'Restaurant',phone:'(415) 555-0311',reviews:67},
-  {gbpId:'accounts/123/locations/loc008',name:'Berkeley Telegraph',address:'2521 Telegraph Ave, Berkeley, CA',category:'Restaurant',phone:'(510) 555-0422',reviews:44},
-  {gbpId:'accounts/123/locations/loc009',name:'San Mateo Downtown',address:'118 S. El Camino Real, San Mateo, CA',category:'Fast Casual',phone:'(650) 555-0533',reviews:38},
-  {gbpId:'accounts/123/locations/loc010',name:'Palo Alto University Ave',address:'456 University Ave, Palo Alto, CA',category:'Restaurant',phone:'(650) 555-0644',reviews:92},
-  {gbpId:'accounts/123/locations/loc011',name:'Santa Cruz Pacific Ave',address:'1120 Pacific Ave, Santa Cruz, CA',category:'Restaurant',phone:'(831) 555-0755',reviews:29},
-  {gbpId:'accounts/123/locations/loc012',name:'Sacramento Midtown',address:'2001 L St, Sacramento, CA',category:'Fast Casual',phone:'(916) 555-0866',reviews:53},
+  {gbpId:'accounts/123/locations/loc011',name:'Eaze Long Beach',address:'3850 Long Beach Blvd, Long Beach, CA',category:'Cannabis Dispensary',phone:'(562) 555-0211',reviews:134},
+  {gbpId:'accounts/123/locations/loc012',name:'Eaze Oakland Temescal',address:'4901 Telegraph Ave, Oakland, CA',category:'Cannabis Dispensary',phone:'(510) 555-0322',reviews:89},
+  {gbpId:'accounts/123/locations/loc013',name:'Green Dragon Pueblo',address:'119 W City Center Dr, Pueblo, CO',category:'Cannabis Dispensary',phone:'(719) 555-0433',reviews:76},
+  {gbpId:'accounts/123/locations/loc014',name:'Fluent Palm Beach',address:'2875 S Military Trail, West Palm Beach, FL',category:'Cannabis Dispensary',phone:'(561) 555-0544',reviews:112},
+  {gbpId:'accounts/123/locations/loc015',name:'Fluent Orlando',address:'7001 S Orange Ave, Orlando, FL',category:'Cannabis Dispensary',phone:'(407) 555-0655',reviews:98},
+  {gbpId:'accounts/123/locations/loc016',name:'Green Dragon Colorado Springs',address:'2428 N Academy Blvd, Colorado Springs, CO',category:'Cannabis Dispensary',phone:'(719) 555-0766',reviews:143},
 ];
 const REPORT_DATA={
   months:['Jan','Feb','Mar','Apr','May','Jun'],
@@ -395,25 +395,24 @@ const L={
   newFolder:{name:'',type:'region',parentId:null},
   newListing:{name:'',address:'',city:'',phone:'',category:'',platforms:{google:false,yelp:false,apple:false},folderId:null},
   folders:[
-    {id:'f1',name:'West Coast',type:'brand',parentId:null},
-    {id:'f2',name:'Fresh Bites',type:'brand',parentId:'f1'},
-    {id:'f3',name:'SF Mission District',type:'brand',parentId:'f2'},
-    {id:'f4',name:'SF Castro',type:'brand',parentId:'f2'},
-    {id:'f5',name:'Oakland Broadway',type:'brand',parentId:'f2'},
-    {id:'f6',name:'Fresh Bites Express',type:'brand',parentId:'f1'},
-    {id:'f7',name:'San Jose Santana Row',type:'brand',parentId:'f6'},
-    {id:'f8',name:'Pacific Northwest',type:'brand',parentId:null},
-    {id:'f9',name:'Fresh Bites',type:'brand',parentId:'f8'},
-    {id:'f10',name:'Seattle Capitol Hill',type:'brand',parentId:'f9'},
-    {id:'f11',name:'Portland Pearl',type:'brand',parentId:'f9'},
+    {id:'f1',name:'Eaze',type:'brand',parentId:null},
+    {id:'f2',name:'Green Dragon',type:'brand',parentId:null},
+    {id:'f3',name:'Fluent',type:'brand',parentId:null},
   ],
   listings:[
-    {id:'l1',name:'SF Mission District',address:'1824 Mission St',city:'San Francisco, CA',phone:'(415) 555-0192',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc001',folderId:'f3',lastSynced:'2 min ago',platforms:{google:{reviews:124,avg:4.2,pending:3,status:'connected'},yelp:{reviews:87,avg:4.5,pending:1,status:'connected'},apple:{reviews:43,avg:4.1,pending:0,status:'connected'}}},
-    {id:'l2',name:'SF Castro',address:'2410 Market St',city:'San Francisco, CA',phone:'(415) 555-0148',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc002',folderId:'f4',lastSynced:'5 min ago',platforms:{google:{reviews:89,avg:4.4,pending:1,status:'connected'},yelp:{reviews:62,avg:4.6,pending:2,status:'connected'}}},
-    {id:'l3',name:'Oakland Broadway',address:'4521 Broadway',city:'Oakland, CA',phone:'(510) 555-0173',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc003',folderId:'f5',lastSynced:'8 min ago',platforms:{google:{reviews:76,avg:4.0,pending:2,status:'connected'},yelp:{reviews:41,avg:3.9,pending:1,status:'connected'},apple:{reviews:18,avg:4.3,pending:0,status:'connected'}}},
-    {id:'l4',name:'San Jose Santana Row',address:'377 Santana Row',city:'San Jose, CA',phone:'(408) 555-0261',category:'Fast Casual',gbpLocationId:'accounts/123/locations/loc004',folderId:'f7',lastSynced:'12 min ago',platforms:{google:{reviews:55,avg:4.7,pending:0,status:'connected'},apple:{reviews:29,avg:4.6,pending:0,status:'connected'}}},
-    {id:'l5',name:'Seattle Capitol Hill',address:'115 Broadway E',city:'Seattle, WA',phone:'(206) 555-0184',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc005',folderId:'f10',lastSynced:'3 min ago',platforms:{google:{reviews:198,avg:4.3,pending:5,status:'connected'},yelp:{reviews:143,avg:4.4,pending:2,status:'connected'},apple:{reviews:67,avg:4.2,pending:1,status:'connected'}}},
-    {id:'l6',name:'Portland Pearl',address:'816 NW Lovejoy St',city:'Portland, OR',phone:'(503) 555-0229',category:'Restaurant',gbpLocationId:'accounts/123/locations/loc006',folderId:'f11',lastSynced:'18 min ago',platforms:{google:{reviews:112,avg:4.5,pending:1,status:'connected'},yelp:{reviews:98,avg:4.7,pending:0,status:'connected'}}},
+    // Eaze
+    {id:'l1',name:'Eaze West Hollywood',address:'8560 Sunset Blvd',city:'West Hollywood, CA',phone:'(323) 555-0181',category:'Cannabis Dispensary',folderId:'f1',lastSynced:'2 min ago',platforms:{google:{reviews:312,avg:4.7,pending:4,status:'connected'},yelp:{reviews:187,avg:4.5,pending:2,status:'connected'},apple:{reviews:94,avg:4.6,pending:0,status:'connected'}}},
+    {id:'l2',name:'Eaze SOMA',address:'340 7th St',city:'San Francisco, CA',phone:'(415) 555-0294',category:'Cannabis Dispensary',folderId:'f1',lastSynced:'5 min ago',platforms:{google:{reviews:278,avg:4.6,pending:3,status:'connected'},yelp:{reviews:201,avg:4.4,pending:1,status:'connected'}}},
+    {id:'l3',name:'Eaze Mission Valley',address:'1640 Camino Del Rio N',city:'San Diego, CA',phone:'(619) 555-0376',category:'Cannabis Dispensary',folderId:'f1',lastSynced:'10 min ago',platforms:{google:{reviews:189,avg:4.5,pending:2,status:'connected'},yelp:{reviews:142,avg:4.3,pending:0,status:'connected'},apple:{reviews:61,avg:4.4,pending:0,status:'connected'}}},
+    {id:'l4',name:'Eaze Sacramento Midtown',address:'2228 K St',city:'Sacramento, CA',phone:'(916) 555-0417',category:'Cannabis Dispensary',folderId:'f1',lastSynced:'14 min ago',platforms:{google:{reviews:156,avg:4.4,pending:1,status:'connected'},yelp:{reviews:98,avg:4.2,pending:2,status:'connected'}}},
+    // Green Dragon
+    {id:'l5',name:'Green Dragon Cherry Creek',address:'244 Fillmore St',city:'Denver, CO',phone:'(303) 555-0522',category:'Cannabis Dispensary',folderId:'f2',lastSynced:'3 min ago',platforms:{google:{reviews:423,avg:4.8,pending:5,status:'connected'},yelp:{reviews:318,avg:4.7,pending:3,status:'connected'},apple:{reviews:127,avg:4.7,pending:1,status:'connected'}}},
+    {id:'l6',name:'Green Dragon Aurora',address:'13700 E Colfax Ave',city:'Aurora, CO',phone:'(720) 555-0638',category:'Cannabis Dispensary',folderId:'f2',lastSynced:'7 min ago',platforms:{google:{reviews:267,avg:4.6,pending:2,status:'connected'},yelp:{reviews:198,avg:4.5,pending:1,status:'connected'}}},
+    {id:'l7',name:'Green Dragon Boulder',address:'1795 Folsom St',city:'Boulder, CO',phone:'(303) 555-0741',category:'Cannabis Dispensary',folderId:'f2',lastSynced:'11 min ago',platforms:{google:{reviews:334,avg:4.7,pending:3,status:'connected'},yelp:{reviews:241,avg:4.6,pending:0,status:'connected'},apple:{reviews:89,avg:4.5,pending:0,status:'connected'}}},
+    // Fluent
+    {id:'l8',name:'Fluent Brickell',address:'1200 Brickell Ave',city:'Miami, FL',phone:'(305) 555-0852',category:'Cannabis Dispensary',folderId:'f3',lastSynced:'4 min ago',platforms:{google:{reviews:198,avg:4.5,pending:3,status:'connected'},yelp:{reviews:134,avg:4.3,pending:2,status:'connected'}}},
+    {id:'l9',name:'Fluent Fort Lauderdale',address:'2300 N Federal Hwy',city:'Fort Lauderdale, FL',phone:'(754) 555-0963',category:'Cannabis Dispensary',folderId:'f3',lastSynced:'9 min ago',platforms:{google:{reviews:167,avg:4.4,pending:1,status:'connected'},yelp:{reviews:112,avg:4.2,pending:0,status:'connected'},apple:{reviews:43,avg:4.3,pending:0,status:'connected'}}},
+    {id:'l10',name:'Fluent Tampa Westshore',address:'4701 W Kennedy Blvd',city:'Tampa, FL',phone:'(813) 555-0174',category:'Cannabis Dispensary',folderId:'f3',lastSynced:'16 min ago',platforms:{google:{reviews:143,avg:4.3,pending:2,status:'connected'},yelp:{reviews:87,avg:4.1,pending:1,status:'connected'}}},
   ],
 };
 
