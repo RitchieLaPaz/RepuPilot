@@ -13,6 +13,7 @@ const { migrate } = require('./db');
 const authRoutes      = require('./routes/auth');
 const locationRoutes  = require('./routes/locations');
 const reviewRoutes    = require('./routes/reviews');
+const folderRoutes    = require('./routes/folders');
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.post('/api/ai/draft', async (req, res) => {
 
 
 app.use('/api/auth',      authRoutes);
+app.use('/api/folders',   folderRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/reviews',   reviewRoutes);
 
