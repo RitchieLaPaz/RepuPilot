@@ -370,22 +370,20 @@ async function loadStateFromBackend(){
       fetch('/api/folders',{headers:authHeaders()}),
       fetch('/api/locations',{headers:authHeaders()})
     ]);
-    if(fr.ok){const data=await fr.json();if(data.length||true)L.folders=data;}
-    if(lr.ok){const data=await lr.json();
-      // Load cached platform data from localStorage to merge
-      let cached={};
-      try{const lc=localStorage.getItem('rp_listings');if(lc)JSON.parse(lc).forEach(l=>{cached[l.id]=l.platforms;});}catch(e){}
-      // Map backend snake_case → frontend camelCase
-      L.listings=data.map(l=>({
+    const folders=fr.ok?await fr.json():[];
+    const locations=lr.ok?await lr.json():[];
+    // Only override defaults if DB has real data
+    if(folders.length>0)L.folders=folders;
+    if(locations.length>0){
+      L.listings=locations.map(l=>({
         id:l.id,name:l.name,address:l.address||'',city:l.city||'',
         phone:l.phone||'',category:l.category||'',
-        folderId:l.folder_id||null,
-        gbpLocationId:l.gbp_location_id||null,
+        folderId:l.folder_id||null,gbpLocationId:l.gbp_location_id||null,
         lastSynced:l.last_synced_at?new Date(l.last_synced_at).toLocaleDateString():'recently',
-        platforms:cached[l.id]||{google:{reviews:0,avg:0,pending:0,status:'connected'}}
+        platforms:{google:{reviews:0,avg:0,pending:0,status:'connected'}}
       }));
     }
-  }catch(e){loadLState();}// fallback to localStorage on error
+  }catch(e){loadLState();}
 }
 
 const L={
