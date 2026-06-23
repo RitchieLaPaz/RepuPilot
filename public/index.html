@@ -524,14 +524,44 @@ function listingCard(lst){
   const initials=lst.name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
   return`<div class="lc">
     <div class="lc-header">
+      ${L.editingListingId===lst.id?`
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--info-fg);margin-bottom:10px;"><i class="ti ti-pencil"></i> Edit listing</div>
+        <div class="grid2" style="margin-bottom:0;">
+          <div style="margin-bottom:8px;"><div style="font-size:11px;color:var(--txt2);margin-bottom:3px;">Name</div><input type="text" value="${L.editingListing.name||''}" oninput="L.editingListing.name=this.value" style="font-size:13px;"></div>
+          <div style="margin-bottom:8px;"><div style="font-size:11px;color:var(--txt2);margin-bottom:3px;">Category</div><input type="text" value="${L.editingListing.category||''}" oninput="L.editingListing.category=this.value" style="font-size:13px;"></div>
+        </div>
+        <div style="margin-bottom:8px;"><div style="font-size:11px;color:var(--txt2);margin-bottom:3px;">Street address</div><input type="text" value="${L.editingListing.address||''}" oninput="L.editingListing.address=this.value" style="font-size:13px;"></div>
+        <div class="grid2" style="margin-bottom:0;">
+          <div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--txt2);margin-bottom:3px;">City, State</div><input type="text" value="${L.editingListing.city||''}" oninput="L.editingListing.city=this.value" style="font-size:13px;"></div>
+          <div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--txt2);margin-bottom:3px;">Phone</div><input type="text" value="${L.editingListing.phone||''}" oninput="L.editingListing.phone=this.value" style="font-size:13px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn p" style="font-size:12px;padding:6px 14px;" onclick="saveListing('${lst.id}')"><i class="ti ti-check"></i> Save</button>
+          <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="L.editingListingId=null;L.editingListing={};renderListings()">Cancel</button>
+        </div>
+      </div>`:`
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:38px;height:38px;border-radius:var(--r-md);background:var(--purple-bg);color:var(--purple-fg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;flex-shrink:0;">${initials}</div>
-          <div><div style="font-weight:500;font-size:14px;line-height:1.3;">${lst.name}</div><div style="font-size:11px;color:var(--txt2);margin-top:1px;">${lst.address||''}${lst.city?', '+lst.city:''}</div></div>
+          <div>
+            <div style="font-weight:500;font-size:14px;line-height:1.3;">${lst.name}</div>
+            ${lst.address?`<div style="font-size:11px;color:var(--txt2);margin-top:1px;">${lst.address}</div>`:''}
+            ${lst.city?`<div style="font-size:11px;color:var(--txt2);">${lst.city}</div>`:''}
+          </div>
         </div>
-        <div style="display:flex;gap:4px;flex-shrink:0;">${totalPending?`<span class="badge" style="background:var(--warn-bg);color:var(--warn-fg);">${totalPending} pending</span>`:`<span class="badge" style="background:var(--succ-bg);color:var(--succ-fg);">Up to date</span>`}<button class="btn d" style="padding:3px 7px;font-size:11px;" onclick="deleteListing('${lst.id}')"><i class="ti ti-trash"></i></button></div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          ${totalPending?`<span class="badge" style="background:var(--warn-bg);color:var(--warn-fg);">${totalPending} pending</span>`:`<span class="badge" style="background:var(--succ-bg);color:var(--succ-fg);">Up to date</span>`}
+          <div style="position:relative;">
+            <select onchange="handleListingAction('${lst.id}',this.value);this.value=''" style="font-size:12px;padding:4px 8px;border-radius:var(--r-md);border:0.5px solid var(--brd2);background:var(--bg);color:var(--txt);cursor:pointer;">
+              <option value="">Actions</option>
+              <option value="edit">✏ Edit</option>
+              <option value="delete">🗑 Delete</option>
+            </select>
+          </div>
+        </div>
       </div>
-      ${lst.category||lst.phone?`<div style="display:flex;gap:12px;margin-top:8px;">${lst.category?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-tag" style="font-size:10px;margin-right:3px;"></i>${lst.category}</span>`:''}${lst.phone?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-phone" style="font-size:10px;margin-right:3px;"></i>${lst.phone}</span>`:''}</div>`:''}
+      ${lst.category||lst.phone?`<div style="display:flex;gap:12px;margin-top:8px;">${lst.category?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-tag" style="font-size:10px;margin-right:3px;"></i>${lst.category}</span>`:''}${lst.phone?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-phone" style="font-size:10px;margin-right:3px;"></i>${lst.phone}</span>`:''}</div>`:''}`}
     </div>
     <div class="lc-body">${platRows}</div>
     <div class="lc-footer">
@@ -1359,6 +1389,16 @@ window.confirmDeleteFolder=async()=>{
   rm(fid);L.selectedFolderId=null;L.confirmingDelete=false;
   if(!isDemo())fetch('/api/folders/'+fid,{method:'DELETE',headers:authHeaders()}).catch(()=>{});
   saveLState();renderListings();
+};
+window.handleListingAction=(id,action)=>{
+  if(action==='edit'){
+    const lst=L.listings.find(l=>l.id===id);if(!lst)return;
+    L.editingListingId=id;
+    L.editingListing={name:lst.name||'',address:lst.address||'',city:lst.city||'',phone:lst.phone||'',category:lst.category||''};
+    renderListings();
+  }else if(action==='delete'){
+    deleteListing(id);
+  }
 };
 window.saveListing=async id=>{
   const lst=L.listings.find(l=>l.id===id);if(!lst)return;
