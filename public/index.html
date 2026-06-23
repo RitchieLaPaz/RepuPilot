@@ -372,14 +372,17 @@ async function loadStateFromBackend(){
     ]);
     if(fr.ok){const data=await fr.json();if(data.length||true)L.folders=data;}
     if(lr.ok){const data=await lr.json();
-      // Map backend snake_case to frontend camelCase
+      // Load cached platform data from localStorage to merge
+      let cached={};
+      try{const lc=localStorage.getItem('rp_listings');if(lc)JSON.parse(lc).forEach(l=>{cached[l.id]=l.platforms;});}catch(e){}
+      // Map backend snake_case → frontend camelCase
       L.listings=data.map(l=>({
         id:l.id,name:l.name,address:l.address||'',city:l.city||'',
         phone:l.phone||'',category:l.category||'',
         folderId:l.folder_id||null,
         gbpLocationId:l.gbp_location_id||null,
         lastSynced:l.last_synced_at?new Date(l.last_synced_at).toLocaleDateString():'recently',
-        platforms:l.platforms||{google:{reviews:0,avg:0,pending:0,status:'connected'}}
+        platforms:cached[l.id]||{google:{reviews:0,avg:0,pending:0,status:'connected'}}
       }));
     }
   }catch(e){loadLState();}// fallback to localStorage on error
@@ -1357,6 +1360,22 @@ window.confirmDeleteFolder=async()=>{
   if(!isDemo())fetch('/api/folders/'+fid,{method:'DELETE',headers:authHeaders()}).catch(()=>{});
   saveLState();renderListings();
 };
+window.saveListing=async id=>{
+  const lst=L.listings.find(l=>l.id===id);if(!lst)return;
+  const u=L.editingListing;
+  if(u.name!==undefined)lst.name=u.name;
+  if(u.address!==undefined)lst.address=u.address;
+  if(u.city!==undefined)lst.city=u.city;
+  if(u.phone!==undefined)lst.phone=u.phone;
+  if(u.category!==undefined)lst.category=u.category;
+  if(!isDemo())fetch('/api/locations/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({name:lst.name,address:lst.address,city:lst.city,phone:lst.phone,category:lst.category})}).catch(()=>{});
+  saveLState();L.editingListingId=null;L.editingListing={};renderListings();
+};
+window.deleteListing=id=>{
+  L.listings=L.listings.filter(l=>l.id!==id);
+  if(!isDemo())fetch('/api/locations/'+id,{method:'DELETE',headers:authHeaders()}).catch(()=>{});
+  saveLState();renderListings();
+};
 window.startRename=(e,fid)=>{e.stopPropagation();L.editingFolderId=fid;renderListings();setTimeout(()=>{const el=document.getElementById('rename-'+fid);if(el){el.focus();el.select();}},50);};
 window.saveRename=async fid=>{
   const el=document.getElementById('rename-'+fid);if(!el)return;
@@ -1377,7 +1396,7 @@ window.moveListing=(lid,folderId)=>{
   }
   saveLState();renderListings();
 };
-window.createListing=()=>{
+window.createListing=async()=>{
   const nameEl=document.getElementById('nl-name');
   const name=(nameEl?.value||L.newListing.name).trim();
   if(!name){nameEl?.focus();return;}
@@ -1387,15 +1406,28 @@ window.createListing=()=>{
   const category=(document.getElementById('nl-cat')?.value||'').trim();
   const plats={};['google','yelp','apple'].forEach(p=>{if(L.newListing.platforms[p])plats[p]={reviews:0,avg:0.0,pending:0,status:'connected'};});
   if(!Object.keys(plats).length){alert('Select at least one platform.');return;}
-  L.listings.push({id:'l'+Date.now(),name,address:addr,city,phone,category,folderId:L.newListing.folderId,lastSynced:'Just added',platforms:plats});
-  L.showNewListing=false;L.newListing={name:'',address:'',city:'',phone:'',category:'',platforms:{google:false,yelp:false,apple:false},folderId:null};
+  const folderId=L.newListing.folderId||L.selectedFolderId||null;
+
+  let newId='l'+Date.now();
+
+  if(!isDemo()){
+    try{
+      const res=await fetch('/api/locations',{method:'POST',headers:authHeaders(),body:JSON.stringify({
+        name,address:addr,city,phone,category,folder_id:folderId
+      })});
+      if(res.ok){const data=await res.json();newId=data.id;}
+    }catch(e){}
+  }
+
+  L.listings.push({id:newId,name,address:addr,city,phone,category,folderId,lastSynced:'Just added',platforms:plats});
+  L.showNewListing=false;
+  L.newListing={name:'',address:'',city:'',phone:'',category:'',platforms:{google:false,yelp:false,apple:false},folderId:null};
   saveLState();renderListings();
 };
 window.simulateGBPConnect=()=>{L.importState='connecting';renderListings();setTimeout(()=>{L.importState='discovered';renderListings();},1800);};
 window.toggleImportSel=gbpId=>{L.importSelected[gbpId]=!L.importSelected[gbpId];renderListings();};
 window.toggleSelectAll=checked=>{const existingIds=new Set(L.listings.map(l=>l.gbpLocationId).filter(Boolean));MOCK_GBP.filter(l=>!existingIds.has(l.gbpId)).forEach(l=>{L.importSelected[l.gbpId]=checked;});renderListings();};
-window.importSelectedLocations=()=>{
-  const existingIds=new Set(L.listings.map(l=>l.gbpLocationId).filter(Boolean));
+window.importSelectedLocations=async()=>{ Set(L.listings.map(l=>l.gbpLocationId).filter(Boolean));
   MOCK_GBP.filter(l=>!existingIds.has(l.gbpId)&&L.importSelected[l.gbpId]).forEach(loc=>{
     L.listings.push({id:'l'+Date.now()+Math.random().toString(36).slice(2,6),name:loc.name,address:loc.address,city:'',phone:loc.phone,category:loc.category,gbpLocationId:loc.gbpId,folderId:L.selectedFolderId||null,lastSynced:'Just imported',platforms:{google:{reviews:loc.reviews,avg:4.2,pending:0,status:'connected'}}});
   });
