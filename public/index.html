@@ -300,7 +300,12 @@ async function signInLocal(){
     loginUser(data.user);
   }catch(e){showAuthErr('Sign-in failed: '+e.message);}
 }
-function loginUser(user){currentUser=user;sessionStorage.setItem('rh_user',JSON.stringify(user));showApp();render();}
+function loginUser(user){
+  currentUser=user;
+  sessionStorage.setItem('rh_user',JSON.stringify(user));
+  showApp();
+  loadStateFromBackend().then(()=>render());
+}
 function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msalInstance){msalInstance.logoutPopup().catch(()=>{});msalInstance=null;}if(typeof google!=='undefined'){try{google.accounts.id.disableAutoSelect();}catch(e){}}showAuth();document.getElementById('auth-err').style.display='none';}
 (function(){
   // Check for invite token in URL
@@ -351,11 +356,33 @@ const REPORT_DATA={
   responseTime:[4.2,3.8,3.5,3.1,2.8,2.6],
 };
 // ── Persist L state to localStorage ─────────────────────────────────────
-function saveLState(){
-  try{localStorage.setItem('rp_folders',JSON.stringify(L.folders));localStorage.setItem('rp_listings',JSON.stringify(L.listings));}catch(e){}
-}
-function loadLState(){
-  try{const f=localStorage.getItem('rp_folders');const l=localStorage.getItem('rp_listings');if(f)L.folders=JSON.parse(f);if(l)L.listings=JSON.parse(l);}catch(e){}
+function isDemo(){return currentUser?.provider==='demo'||!currentUser;}
+
+// localStorage fallback for demo mode
+function saveLState(){try{localStorage.setItem('rp_folders',JSON.stringify(L.folders));localStorage.setItem('rp_listings',JSON.stringify(L.listings));}catch(e){}}
+function loadLState(){try{const f=localStorage.getItem('rp_folders');const l=localStorage.getItem('rp_listings');if(f)L.folders=JSON.parse(f);if(l)L.listings=JSON.parse(l);}catch(e){}}
+
+// Load folders + listings from backend (called after login)
+async function loadStateFromBackend(){
+  if(isDemo()){loadLState();return;}
+  try{
+    const [fr,lr]=await Promise.all([
+      fetch('/api/folders',{headers:authHeaders()}),
+      fetch('/api/locations',{headers:authHeaders()})
+    ]);
+    if(fr.ok){const data=await fr.json();if(data.length||true)L.folders=data;}
+    if(lr.ok){const data=await lr.json();
+      // Map backend snake_case to frontend camelCase
+      L.listings=data.map(l=>({
+        id:l.id,name:l.name,address:l.address||'',city:l.city||'',
+        phone:l.phone||'',category:l.category||'',
+        folderId:l.folder_id||null,
+        gbpLocationId:l.gbp_location_id||null,
+        lastSynced:l.last_synced_at?new Date(l.last_synced_at).toLocaleDateString():'recently',
+        platforms:l.platforms||{google:{reviews:0,avg:0,pending:0,status:'connected'}}
+      }));
+    }
+  }catch(e){loadLState();}// fallback to localStorage on error
 }
 
 const L={
@@ -1306,23 +1333,50 @@ window.deleteFolder=(e,fid)=>{
   if(e&&e.stopPropagation)e.stopPropagation();
   L.selectedFolderId=fid;L.confirmingDelete=true;renderListings();
 };
-window.createFolder=()=>{
+window.createFolder=async()=>{
   const name=(L.newFolder.name||'').trim();
   if(!name)return;
-  L.folders.push({id:'f'+Date.now(),name,type:'brand',parentId:L.newFolder.parentId||null});
-  L.showNewFolder=false;
-  L.newFolder={name:'',type:'brand',parentId:null};
-  saveLState();renderListings();
+  if(isDemo()){
+    L.folders.push({id:'f'+Date.now(),name,type:'brand',parentId:L.newFolder.parentId||null});
+    saveLState();
+  }else{
+    try{
+      const res=await fetch('/api/folders',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,parentId:L.newFolder.parentId||null})});
+      if(res.ok){const folder=await res.json();L.folders.push(folder);}
+    }catch(e){}
+  }
+  L.showNewFolder=false;L.newFolder={name:'',type:'brand',parentId:null};
+  renderListings();
 };
-window.confirmDeleteFolder=()=>{
+window.confirmDeleteFolder=async()=>{
   const fid=L.selectedFolderId;if(!fid)return;
+  // Update UI immediately
   L.listings.forEach(l=>{if(l.folderId===fid)l.folderId=null;});
   const rm=id=>{L.folders.filter(f=>f.parentId===id).forEach(f=>rm(f.id));L.folders=L.folders.filter(f=>f.id!==id);};
-  rm(fid);L.selectedFolderId=null;L.confirmingDelete=false;saveLState();renderListings();
+  rm(fid);L.selectedFolderId=null;L.confirmingDelete=false;
+  if(!isDemo())fetch('/api/folders/'+fid,{method:'DELETE',headers:authHeaders()}).catch(()=>{});
+  saveLState();renderListings();
 };
 window.startRename=(e,fid)=>{e.stopPropagation();L.editingFolderId=fid;renderListings();setTimeout(()=>{const el=document.getElementById('rename-'+fid);if(el){el.focus();el.select();}},50);};
-window.saveRename=fid=>{const el=document.getElementById('rename-'+fid);if(!el)return;const name=el.value.trim();if(name){const f=L.folders.find(f=>f.id===fid);if(f)f.name=name;}L.editingFolderId=null;saveLState();setTimeout(()=>renderListings(),0);};
-window.moveListing=(lid,folderId)=>{const lst=L.listings.find(l=>l.id===lid);if(lst)lst.folderId=folderId||null;saveLState();renderListings();};
+window.saveRename=async fid=>{
+  const el=document.getElementById('rename-'+fid);if(!el)return;
+  const name=el.value.trim();
+  if(name){
+    const f=L.folders.find(f=>f.id===fid);
+    if(f){
+      f.name=name;
+      if(!isDemo())fetch('/api/folders/'+fid,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({name})}).catch(()=>{});
+    }
+  }
+  L.editingFolderId=null;saveLState();setTimeout(()=>renderListings(),0);
+};
+window.moveListing=(lid,folderId)=>{
+  const lst=L.listings.find(l=>l.id===lid);
+  if(lst){lst.folderId=folderId||null;
+    if(!isDemo())fetch('/api/locations/'+lid,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({folder_id:folderId||null})}).catch(()=>{});
+  }
+  saveLState();renderListings();
+};
 window.createListing=()=>{
   const nameEl=document.getElementById('nl-name');
   const name=(nameEl?.value||L.newListing.name).trim();
