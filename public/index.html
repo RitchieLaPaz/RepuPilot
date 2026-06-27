@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>RepuPilot</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
 <script>
@@ -14,59 +16,68 @@ const SSO_CONFIG = {
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
-:root{
-  --bg:#fff;--bg2:#f6f6f4;--bg3:#efefec;
+:root{--yellow:#FFE400;--yellow-dim:rgba(255,228,0,0.1);--r-md:8px;--r-lg:12px;}
+
+/* ── LIGHT THEME (default) ─────────────────────────────── */
+html,[data-theme="light"]{
+  --bg:#ffffff;--bg2:#f5f5f3;--bg3:#ededea;
   --txt:#1a1a18;--txt2:#6b6b66;--txt3:#9c9c96;
-  --brd:rgba(0,0,0,.12);--brd2:rgba(0,0,0,.22);
-  --info-bg:#e6f1fb;--info-fg:#185fa5;
-  --warn-bg:#faeeda;--warn-fg:#854f0b;
-  --succ-bg:#eaf3de;--succ-fg:#3b6d11;
-  --dang-bg:#fcebeb;--dang-fg:#a32d2d;
-  --purple-bg:#eeedfe;--purple-fg:#534ab7;
-  --amber:#BA7517;--r-md:8px;--r-lg:12px;
+  --brd:rgba(0,0,0,.1);--brd2:rgba(0,0,0,.2);
+  --info-bg:#e8f1fe;--info-fg:#1a6bc5;
+  --warn-bg:#fef3e2;--warn-fg:#a05c00;
+  --succ-bg:#e6f4ea;--succ-fg:#137333;
+  --dang-bg:#fce8e6;--dang-fg:#c5221f;
+  --purple-bg:#f3e8fd;--purple-fg:#7627bb;
+  --amber:#a05c00;--brand-txt:#1a1a18;
 }
-@media(prefers-color-scheme:dark){:root{
-  --bg:#1c1c1a;--bg2:#242422;--bg3:#2c2c2a;
-  --txt:#f0f0ec;--txt2:#a0a09a;--txt3:#6b6b66;
-  --brd:rgba(255,255,255,.12);--brd2:rgba(255,255,255,.22);
-  --info-bg:#042c53;--info-fg:#85b7eb;--warn-bg:#412402;--warn-fg:#fac775;
-  --succ-bg:#173404;--succ-fg:#c0dd97;--dang-bg:#501313;--dang-fg:#f09595;
-  --purple-bg:#26215c;--purple-fg:#afa9ec;
-}}
+/* ── DARK THEME ─────────────────────────────────────────── */
+[data-theme="dark"]{
+  --bg:#141413;--bg2:#1c1c1a;--bg3:#0a0a09;
+  --txt:#f0f0ec;--txt2:#909090;--txt3:#525250;
+  --brd:rgba(255,255,255,.08);--brd2:rgba(255,255,255,.16);
+  --info-bg:rgba(255,228,0,0.1);--info-fg:#FFE400;
+  --warn-bg:rgba(245,166,35,0.12);--warn-fg:#f5a83a;
+  --succ-bg:rgba(111,207,151,0.1);--succ-fg:#6fcf97;
+  --dang-bg:rgba(235,87,87,0.12);--dang-fg:#eb5757;
+  --purple-bg:rgba(255,228,0,0.1);--purple-fg:#FFE400;
+  --amber:#FFE400;--brand-txt:var(--yellow);
+}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg3);color:var(--txt);font-size:15px;line-height:1.6;}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg3);color:var(--txt);font-size:15px;line-height:1.6;border-top:3px solid var(--yellow);}
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .auth-card{background:var(--bg);border:0.5px solid var(--brd);border-radius:16px;padding:44px 40px;width:100%;max-width:440px;}
 .auth-logo-wrap{text-align:center;margin-bottom:20px;}
-.auth-logo{width:52px;height:52px;background:var(--txt);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--bg);font-size:22px;}
+.auth-logo{width:52px;height:52px;background:var(--yellow);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:#0a0a09;font-size:22px;}
 .auth-logo-img{height:52px;max-width:200px;object-fit:contain;border-radius:8px;}
 .auth-divider{display:flex;align-items:center;gap:12px;margin:18px 0;}
 .auth-divider span{font-size:12px;color:var(--txt3);white-space:nowrap;}
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:0.5px;background:var(--brd);}
 .sso-btn{width:100%;padding:11px 16px;border-radius:var(--r-md);font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font-family:inherit;margin-bottom:10px;border:none;}
-.sso-btn:hover{opacity:.88;}.sso-btn.google{background:#fff;color:#3c4043;border:1px solid #dadce0;}
-@media(prefers-color-scheme:dark){.sso-btn.google{background:#303030;color:#e8e8e8;border-color:#555;}}
+.sso-btn:hover{opacity:.88;}[data-theme="light"] .sso-btn.google{background:#fff;color:#3c4043;border:1px solid #dadce0;}
+[data-theme="dark"] .sso-btn.google{background:#1c1c1a;color:#f0f0ec;border:1px solid rgba(255,255,255,0.15);}
 .sso-btn.microsoft{background:#0078d4;color:#fff;}
 .sso-btn.demo{background:none;border:0.5px solid var(--brd2);color:var(--txt2);font-weight:400;font-size:13px;}
 .sso-btn.demo:hover{background:var(--bg2);}
 .auth-err{background:var(--dang-bg);color:var(--dang-fg);font-size:13px;padding:10px 14px;border-radius:var(--r-md);margin-bottom:16px;display:none;text-align:left;}
 .auth-loading{display:none;flex-direction:column;align-items:center;gap:12px;padding:24px 0;}
-.spinner{width:28px;height:28px;border:2px solid var(--brd);border-top-color:var(--txt);border-radius:50%;animation:spin .7s linear infinite;}
+.spinner{width:28px;height:28px;border:2px solid var(--brd);border-top-color:var(--yellow);border-radius:50%;animation:spin .7s linear infinite;}
+[data-theme="light"] .spinner{border-top-color:var(--txt);}
 .auth-legal{font-size:11px;color:var(--txt3);margin-top:20px;line-height:1.6;text-align:center;}
 #main-app{display:none;}
 #app{max-width:840px;margin:0 auto;padding:24px 20px;}
 .tabs{display:flex;border-bottom:0.5px solid var(--brd);margin-bottom:24px;overflow-x:auto;}
 .tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:14px;color:var(--txt2);cursor:pointer;font-family:inherit;margin-bottom:-1px;white-space:nowrap;}
-.tab.on{color:var(--txt);border-bottom-color:var(--txt);font-weight:500;}
+[data-theme="light"] .tab.on{color:var(--txt);border-bottom-color:var(--yellow);font-weight:700;}
+[data-theme="dark"] .tab.on{color:var(--yellow);border-bottom-color:var(--yellow);font-weight:600;}
 .tab:hover:not(.on){color:var(--txt);}
 .pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
 .pill{background:none;border:0.5px solid var(--brd);padding:4px 14px;border-radius:20px;font-size:12px;color:var(--txt2);cursor:pointer;font-family:inherit;}
-.pill.on{background:var(--txt);color:var(--bg);border-color:transparent;}
+.pill.on{background:var(--yellow);color:#0a0a09;border-color:transparent;font-weight:600;}
 .pill:hover:not(.on){border-color:var(--brd2);color:var(--txt);}
 .btn{background:none;border:0.5px solid var(--brd2);padding:7px 16px;border-radius:var(--r-md);font-size:13px;color:var(--txt);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;}
 .btn:hover:not([disabled]){background:var(--bg2);}
-.btn.p{background:var(--txt);color:var(--bg);border:none;}
-.btn.p:hover:not([disabled]){opacity:.85;}
+.btn.p{background:var(--yellow);color:#0a0a09;border:none;font-weight:600;}
+.btn.p:hover:not([disabled]){background:#f0d800;opacity:1;}
 .btn.d{color:var(--dang-fg);border-color:var(--dang-fg);}
 .btn.d:hover:not([disabled]){background:var(--dang-bg);}
 .btn[disabled]{opacity:.4;cursor:default;}
@@ -74,7 +85,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg3);color:
 .metric{background:var(--bg2);border-radius:var(--r-md);padding:14px 16px;}
 .badge{font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--r-md);display:inline-block;}
 textarea{width:100%;padding:10px 12px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg2);color:var(--txt);resize:vertical;font-family:inherit;line-height:1.6;margin-top:6px;}
-input[type="text"]{width:100%;padding:8px 12px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg);color:var(--txt);font-family:inherit;}
+input[type="text"],input[type="email"],input[type="password"],input[type="tel"]{width:100%;padding:8px 12px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg);color:var(--txt);font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
+[data-theme="dark"] input{background:var(--bg2);}
+input:focus,textarea:focus,select:focus{border-color:rgba(255,228,0,.5)!important;box-shadow:0 0 0 3px rgba(255,228,0,0.08);}
 select{padding:7px 10px;font-size:13px;border:0.5px solid var(--brd2);border-radius:var(--r-md);background:var(--bg);color:var(--txt);cursor:pointer;font-family:inherit;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .spin{display:inline-block;animation:spin .8s linear infinite;}
@@ -179,6 +192,17 @@ select{padding:7px 10px;font-size:13px;border:0.5px solid var(--brd2);border-rad
 <script>
 // ── Brand ─────────────────────────────────────────────────────────────────
 let BRAND={companyName:'',logoDataUrl:null};
+// ── Eaze logo — fetch once, embed as base64 ──────────────────────────────
+(function(){
+  const URL='https://res.cloudinary.com/duaehebtb/image/upload/v1776126030/eaze-logo_et6zc7.png';
+  const KEY='rp_eaze_logo_b64';
+  const cached=localStorage.getItem(KEY);
+  if(cached){BRAND.logoDataUrl=cached;return;}
+  fetch(URL).then(r=>r.blob())
+    .then(b=>new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(b);}))
+    .then(uri=>{localStorage.setItem(KEY,uri);BRAND.logoDataUrl=uri;if(typeof updateAuthDisplay==='function')updateAuthDisplay();})
+    .catch(()=>{BRAND.logoDataUrl=URL;if(typeof updateAuthDisplay==='function')updateAuthDisplay();});
+})();
 (function(){const s=sessionStorage.getItem('rh_brand');if(s)try{BRAND=JSON.parse(s);}catch(e){}})();
 function saveBrand(){sessionStorage.setItem('rh_brand',JSON.stringify(BRAND));}
 function updateAuthDisplay(){
@@ -430,6 +454,20 @@ const TC={brand:{label:'Brand',icon:'ti-building-store',bg:'var(--purple-bg)',fg
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function authHeaders(){const t=sessionStorage.getItem('rp_token');return t?{'Content-Type':'application/json','Authorization':'Bearer '+t}:{'Content-Type':'application/json'};}
+// ── Theme toggle ─────────────────────────────────────────────────────────
+function getTheme(){return localStorage.getItem('rp_theme')||'light';}
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('rp_theme',t);renderThemeBtn();}
+function toggleTheme(){setTheme(getTheme()==='dark'?'light':'dark');}
+function renderThemeBtn(){
+  const btn=document.getElementById('theme-toggle');
+  if(!btn)return;
+  const dark=getTheme()==='dark';
+  btn.title=dark?'Switch to light mode':'Switch to dark mode';
+  btn.innerHTML=`<i class="ti ti-${dark?'sun':'moon'}" style="font-size:16px;"></i>`;
+}
+// Apply theme immediately on load
+document.documentElement.setAttribute('data-theme',getTheme());
+
 const ini=n=>n.split(' ').slice(0,2).map(p=>p[0]).join('');
 const stars=r=>[1,2,3,4,5].map(i=>`<span style="color:${i<=r?'var(--amber)':'var(--brd2)'};font-size:14px;">&#9733;</span>`).join('');
 const pfB=p=>{const c=PC[p];return`<span class="badge" style="background:${c.bg};color:${c.fg};">${c.l}</span>`;};
@@ -450,8 +488,8 @@ function userAvatarHTML(size=32){if(!currentUser)return'';const s=size+'px';if(c
 function providerTag(){const P={google:{l:'Google',bg:'#4285F4',fg:'#fff'},microsoft:{l:'Microsoft',bg:'#0078d4',fg:'#fff'},demo:{l:'Demo',bg:'var(--bg3)',fg:'var(--txt2)'}};const p=P[currentUser?.provider]||P.demo;return`<span class="provider-tag" style="background:${p.bg};color:${p.fg};">${p.l}</span>`;}
 function brandHeaderHTML(){
   const logo=BRAND.logoDataUrl?`<img src="${BRAND.logoDataUrl}" style="height:30px;max-width:110px;object-fit:contain;border-radius:4px;margin-right:8px;" alt="Logo">`:`<i class="ti ti-plane-tilt" style="font-size:18px;margin-right:7px;opacity:.65;"></i>`;
-  const title=BRAND.companyName?`RepuPilot <span style="font-weight:400;color:var(--txt2);">\u2014 ${BRAND.companyName}</span>`:'RepuPilot';
-  return`<div style="display:flex;align-items:center;">${logo}<h1 style="font-size:20px;font-weight:500;">${title}</h1></div>`;
+  const title=BRAND.companyName?`<span style="color:var(--yellow);">RepuPilot</span> <span style="font-weight:400;color:var(--txt3);font-size:14px;">\u2014 ${BRAND.companyName}</span>`:`<span style="color:var(--brand-txt);">RepuPilot</span>`;
+  return`<div style="display:flex;align-items:center;">${logo}<h1 style="font-size:20px;font-weight:800;letter-spacing:-0.02em;">${title}</h1></div>`;
 }
 
 // ── Review card ───────────────────────────────────────────────────────────
@@ -560,6 +598,7 @@ function listingCard(lst){
       </div>
       ${lst.category||lst.phone?`<div style="display:flex;gap:12px;margin-top:8px;">${lst.category?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-tag" style="font-size:10px;margin-right:3px;"></i>${lst.category}</span>`:''}${lst.phone?`<span style="font-size:11px;color:var(--txt2);"><i class="ti ti-phone" style="font-size:10px;margin-right:3px;"></i>${lst.phone}</span>`:''}</div>`:''}`}
     </div>
+    ${L.confirmDeleteListingId===lst.id?`<div style="padding:12px 16px;background:var(--dang-bg);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div style="font-size:13px;color:var(--dang-fg);font-weight:500;"><i class="ti ti-alert-triangle"></i> Delete <strong>${lst.name}</strong>? This cannot be undone.</div><div style="display:flex;gap:8px;"><button class="btn d" style="font-size:12px;padding:5px 14px;" onclick="L.confirmDeleteListingId=null;deleteListing('${lst.id}')">Yes, delete</button><button class="btn" style="font-size:12px;padding:5px 14px;" onclick="L.confirmDeleteListingId=null;renderListings()">Cancel</button></div></div>`:''}
     <div class="lc-body">${platRows}</div>
     <div class="lc-footer">
       <span style="font-size:11px;color:var(--txt3);"><i class="ti ti-refresh" style="font-size:10px;margin-right:3px;"></i>Synced ${lst.lastSynced||'recently'}</span>
@@ -915,7 +954,7 @@ function renderBrandGuide(){
     <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:28px;">
       <span class="bq-num">2</span>
       <div style="flex:1;"><div style="font-size:14px;font-weight:500;margin-bottom:4px;">Upload your logo</div><div style="font-size:13px;color:var(--txt2);margin-bottom:10px;">Appears on the login screen and in the app header. PNG, SVG, or JPG &#183; max 2 MB.</div>
-        <label class="logo-drop" style="max-width:340px;">${BRAND.logoDataUrl?`<div style="display:flex;align-items:center;justify-content:center;gap:14px;"><img src="${BRAND.logoDataUrl}" style="height:44px;max-width:160px;object-fit:contain;border-radius:4px;" alt="Logo"><button type="button" onclick="event.preventDefault();BRAND.logoDataUrl=null;S.tab='brand';render()" style="background:none;border:0.5px solid var(--brd2);padding:5px 12px;border-radius:var(--r-md);font-size:12px;color:var(--txt2);cursor:pointer;font-family:inherit;"><i class="ti ti-x" style="font-size:11px;"></i> Remove</button></div>`:`<i class="ti ti-upload" style="font-size:26px;color:var(--txt3);display:block;margin-bottom:6px;"></i><div style="font-size:13px;color:var(--txt2);">Click to upload</div>`}<input type="file" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)"></label>
+        <label class="logo-drop" style="max-width:340px;">${BRAND.logoDataUrl?`<div style="display:flex;align-items:center;justify-content:center;gap:14px;"><img src="${BRAND.logoDataUrl}" style="height:44px;max-width:160px;object-fit:contain;border-radius:4px;" alt="Logo"><button type="button" onclick="event.preventDefault();removeLogo()" style="background:none;border:0.5px solid var(--brd2);padding:5px 12px;border-radius:var(--r-md);font-size:12px;color:var(--txt2);cursor:pointer;font-family:inherit;"><i class="ti ti-x" style="font-size:11px;"></i> Remove</button></div>`:`<i class="ti ti-upload" style="font-size:26px;color:var(--txt3);display:block;margin-bottom:6px;"></i><div style="font-size:13px;color:var(--txt2);">Click to upload</div>`}<input type="file" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)"></label>
       </div>
     </div>
     <div class="brand-preview" style="margin-bottom:28px;">
@@ -940,7 +979,25 @@ function refreshBrandPreview(){
   if(pl)pl.textContent=name?`Welcome to ${name}\u2019s RepuPilot`:'Welcome to RepuPilot';
   if(ph)ph.textContent=name?`RepuPilot \u2014 ${name}`:'RepuPilot';
 }
-function handleLogoUpload(e){const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){alert('Logo must be under 2 MB.');return;}const reader=new FileReader();reader.onload=ev=>{BRAND.logoDataUrl=ev.target.result;S.tab='brand';render();};reader.readAsDataURL(file);}
+function handleLogoUpload(e){
+  const file=e.target.files[0];if(!file)return;
+  if(file.size>2*1024*1024){alert('Logo must be under 2 MB.');return;}
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    BRAND.logoDataUrl=ev.target.result;
+    localStorage.setItem('rp_user_logo',ev.target.result);
+    saveBrand();updateAuthDisplay();S.tab='brand';render();
+  };
+  reader.readAsDataURL(file);
+}
+window.removeLogo=()=>{
+  BRAND.logoDataUrl=null;
+  localStorage.removeItem('rp_user_logo');
+  // Restore Eaze default
+  const eazeCached=localStorage.getItem('rp_eaze_logo_b64');
+  if(eazeCached){BRAND.logoDataUrl=eazeCached;}
+  saveBrand();updateAuthDisplay();render();
+};
 function saveBrandGuide(){const nameEl=document.getElementById('bg-name');if(nameEl)BRAND.companyName=nameEl.value.trim();saveBrand();updateAuthDisplay();const headerEl=document.getElementById('brand-header');if(headerEl)headerEl.innerHTML=brandHeaderHTML();const ok=document.getElementById('bg-saved');if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',2000);}}
 
 // ── SVG Chart Helpers ────────────────────────────────────────────────────
@@ -1094,7 +1151,9 @@ function render(){
     <div><div id="brand-header">${brandHeaderHTML()}</div><p style="font-size:13px;color:var(--txt2);margin-top:4px;"><i class="ti ti-building" style="font-size:12px;"></i> Google Business &nbsp;&#183;&nbsp; <i class="ti ti-device-mobile" style="font-size:12px;"></i> Apple &nbsp;&#183;&nbsp; <i class="ti ti-map-pin" style="font-size:12px;"></i> Yelp</p></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="badge" style="background:${act?'var(--warn-bg)':'var(--succ-bg)'};color:${act?'var(--warn-fg)':'var(--succ-fg)'};font-size:13px;padding:5px 14px;">${act?`${act} review${act!==1?'s':''} need action`:'All caught up &#10003;'}</span>
-<div style="position:relative;">
+<div style="display:flex;align-items:center;gap:8px;">
+        <button id="theme-toggle" class="btn" onclick="toggleTheme()" style="padding:6px 10px;"></button>
+        <div style="position:relative;">
         <div class="user-chip" onclick="S.userMenuOpen=!S.userMenuOpen;render()" style="cursor:pointer;user-select:none;" title="Account menu">
           ${userAvatarHTML(26)}
           <div><div style="font-size:13px;font-weight:500;line-height:1.2;">${currentUser.name}</div><div style="display:flex;align-items:center;gap:5px;margin-top:1px;">${providerTag()}<span style="font-size:11px;color:var(--txt3);">${currentUser.email}</span></div></div>
@@ -1394,7 +1453,7 @@ window.handleListingAction=(id,action)=>{
     L.editingListing={name:lst.name||'',address:lst.address||'',city:lst.city||'',phone:lst.phone||'',category:lst.category||''};
     renderListings();
   }else if(action==='delete'){
-    deleteListing(id);
+    L.confirmDeleteListingId=id;renderListings();
   }
 };
 window.saveListing=async id=>{
