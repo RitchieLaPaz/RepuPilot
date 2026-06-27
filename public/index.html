@@ -498,7 +498,7 @@ function renderThemeBtn(){
   if(!btn)return;
   const dark=getTheme()==='dark';
   btn.title=dark?'Switch to light mode':'Switch to dark mode';
-  btn.innerHTML=`<i class="ti ti-${dark?'sun':'moon'}" style="font-size:16px;"></i>`;
+  btn.innerHTML=`<i class="ti ti-${dark?'sun':'moon'}" style="font-size:13px;"></i><span style="font-size:11px;font-weight:500;">${dark?'Light':'Dark'}</span>`;
 }
 // Apply theme immediately on load
 document.documentElement.setAttribute('data-theme',getTheme());
@@ -1351,11 +1351,11 @@ function render(){
   const act=S.reviews.filter(r=>r.st==='pending'||r.st==='draft').length;
   document.getElementById('app').innerHTML=`
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
-    <div><div id="brand-header">${brandHeaderHTML()}</div><p style="font-size:13px;color:var(--txt2);margin-top:4px;"><i class="ti ti-building" style="font-size:12px;"></i> Google Business &nbsp;&#183;&nbsp; <i class="ti ti-device-mobile" style="font-size:12px;"></i> Apple &nbsp;&#183;&nbsp; <i class="ti ti-map-pin" style="font-size:12px;"></i> Yelp</p></div>
+    <div><div id="brand-header">${brandHeaderHTML()}</div><p style="font-size:13px;color:var(--txt2);margin-top:4px;"><i class="ti ti-building" style="font-size:12px;"></i> Google Business &nbsp;&#183;&nbsp; <i class="ti ti-device-mobile" style="font-size:12px;"></i> Apple &nbsp;&#183;&nbsp; <i class="ti ti-map-pin" style="font-size:12px;"></i> Yelp &nbsp;&#183;&nbsp; <i class="ti ti-brand-reddit" style="font-size:12px;"></i> Reddit</p></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="badge" style="background:${act?'var(--warn-bg)':'var(--succ-bg)'};color:${act?'var(--warn-fg)':'var(--succ-fg)'};font-size:13px;padding:5px 14px;">${act?`${act} review${act!==1?'s':''} need action`:'All caught up &#10003;'}</span>
 <div style="display:flex;align-items:center;gap:8px;">
-        <button id="theme-toggle" class="btn" onclick="toggleTheme()" style="padding:6px 10px;"></button>
+        <button onclick="toggleTheme()" class="btn" style="padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px;white-space:nowrap;">${getTheme()==='dark'?'☀ Light':'🌙 Dark'}</button>
         <div style="position:relative;">
         <div class="user-chip" onclick="S.userMenuOpen=!S.userMenuOpen;render()" style="cursor:pointer;user-select:none;" title="Account menu">
           ${userAvatarHTML(26)}
@@ -1403,7 +1403,7 @@ function render(){
     </div>
   </div>
   <div class="tabs">
-    ${[['listings','Listings','ti-folder'],['dashboard','Dashboard','ti-home'],['reviews','Reviews','ti-message-dots'],['reports','Reports','ti-chart-bar'],['templates','Templates','ti-template'],['ai-voice','Brand Voice','ti-sparkles'],['brand','Brand Guide','ti-paint'],['reddit','Reddit','ti-brand-reddit'],['settings','Settings','ti-settings']].map(([v,l,ic])=>
+    ${[['listings','Listings','ti-folder'],['dashboard','Dashboard','ti-home'],['reviews','Reviews','ti-message-dots'],['reddit','Reddit','ti-brand-reddit'],['reports','Reports','ti-chart-bar'],['templates','Templates','ti-template'],['ai-voice','Brand Voice','ti-sparkles'],['brand','Brand Guide','ti-paint'],['settings','Settings','ti-settings']].map(([v,l,ic])=>
       `<button class="tab${S.tab===v?' on':''}" onclick="setTab('${v}')"><i class="ti ${ic}" style="font-size:14px;margin-right:5px;"></i>${l}${v==='reviews'&&act?` <span style="background:var(--warn-fg);color:var(--bg);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:3px;">${act}</span>`:''}</button>`
     ).join('')}
   </div>
