@@ -148,6 +148,41 @@ select{padding:7px 10px;font-size:13px;border:0.5px solid var(--brd2);border-rad
 .report-table tbody tr:hover td{background:var(--bg2);}
 .insight-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--brd);}
 .insight-item:last-child{border-bottom:none;}
+
+/* ── Reddit Signals ──────────────────────────────────────────────────────── */
+.scanner-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg2);border:0.5px solid var(--brd);border-radius:var(--r-md);font-size:11px;color:var(--txt2);margin-bottom:16px;}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--succ-fg);flex-shrink:0;animation:rpulse 2s ease-in-out infinite;}
+@keyframes rpulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sig-row{background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-md);margin-bottom:8px;cursor:pointer;transition:border-color .15s;overflow:hidden;}
+.sig-row:hover{border-color:var(--brd2);}
+.sig-row.open{border-color:var(--yellow);}
+.sig-head{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+.urg-badge{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.urg-hi{background:rgba(235,87,87,0.15);color:var(--dang-fg);}
+.urg-md{background:rgba(245,166,35,0.15);color:var(--warn-fg);}
+.urg-lo{background:rgba(111,207,151,0.15);color:var(--succ-fg);}
+.sig-mid{flex:1;min-width:0;}
+.sig-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sig-meta{font-size:11px;color:var(--txt2);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.brand-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.bdot-eaze{background:#60a5fa;} .bdot-gd{background:var(--succ-fg);} .bdot-fl{background:var(--warn-fg);}
+.sig-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.sig-chevron{color:var(--txt3);font-size:13px;transition:transform .2s;}
+.sig-row.open .sig-chevron{transform:rotate(180deg);}
+.sig-detail{display:none;border-top:0.5px solid var(--brd);padding:14px;}
+.sig-row.open .sig-detail{display:block;}
+.sig-body-quote{font-size:12px;color:var(--txt2);line-height:1.6;background:var(--bg2);border:0.5px solid var(--brd);border-radius:var(--r-md);padding:12px;margin-bottom:12px;border-left:3px solid var(--brd2);}
+.sig-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.sig-detail-cell{background:var(--bg2);border:0.5px solid var(--brd);border-radius:var(--r-md);padding:9px 12px;}
+.sig-detail-label{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.sig-detail-val{font-size:12px;font-weight:500;}
+.ai-reasoning{background:var(--yellow-dim);border:0.5px solid rgba(255,228,0,.25);border-radius:var(--r-md);padding:12px;margin-bottom:12px;}
+.ai-reasoning-label{font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;font-weight:600;}
+.ai-reasoning-text{font-size:12px;color:var(--txt2);line-height:1.6;}
+.reddit-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.reddit-stat{background:var(--bg);border:0.5px solid var(--brd);border-radius:var(--r-md);padding:12px 16px;}
+.reddit-stat-label{font-size:11px;color:var(--txt2);margin-bottom:6px;}
+.reddit-stat-val{font-size:22px;font-weight:700;}
 </style>
 </head>
 <body>
@@ -344,7 +379,7 @@ function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msal
 const S={
   tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
-  users:null,usersLoading:false,invites:null,userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
+  users:null,usersLoading:false,invites:null,reddit:{signals:[],loading:false,activeBrand:'all',activeStatus:'all',openId:null,scanner:null},userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
     {id:1,pf:'google',nm:'Sarah M.',loc:'Eaze West Hollywood',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
     {id:2,pf:'yelp',nm:'James K.',loc:'Green Dragon Cherry Creek',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
@@ -940,6 +975,174 @@ function renderSettingsInner(){
 
 function renderSettings(){const el=document.getElementById('settings-view');if(el)el.innerHTML=renderSettingsInner();else render();}
 
+// ── Reddit Signals Tab ───────────────────────────────────────────────────
+async function loadRedditSignals(){
+  if(isDemo()){S.reddit.signals=demoRedditSignals();render();return;}
+  S.reddit.loading=true;render();
+  try{
+    const params=new URLSearchParams();
+    if(S.reddit.activeBrand!=='all')params.set('brand',S.reddit.activeBrand);
+    if(S.reddit.activeStatus!=='all')params.set('status',S.reddit.activeStatus);
+    const [sr,sc]=await Promise.all([
+      fetch('/api/reddit-signals?'+params,{headers:authHeaders()}),
+      fetch('/api/reddit-signals/scanner-status',{headers:authHeaders()})
+    ]);
+    if(sr.ok)S.reddit.signals=await sr.json();
+    if(sc.ok)S.reddit.scanner=await sc.json();
+  }catch(e){}
+  S.reddit.loading=false;render();
+}
+
+function demoRedditSignals(){
+  return[
+    {id:1,brand:'eaze',bname:'Eaze',urgency_score:9,subreddit:'r/weed',title:'Eaze delivered the wrong order and support never responded — avoid',sentiment:'Negative',status:'new',signal_type:'Complaint',action:'Respond now',ai_reason:'High-urgency complaint with no response. Risk of upvote spiral.',body:'Ordered from Eaze last Friday, got completely the wrong items. Reached out to support 4 times over 3 days and heard nothing.',suggested_response:"Hi [name], we're really sorry — this is not the experience we want for anyone. Please DM us your order number and we'll make this right today.",created_at:new Date(Date.now()-12*60000).toISOString(),url:'https://reddit.com'},
+    {id:2,brand:'green_dragon',bname:'Green Dragon',urgency_score:8,subreddit:'r/Colorado',title:'Green Dragon Boulder staff were rude and dismissive to my wife',sentiment:'Negative',status:'new',signal_type:'Complaint',action:'Respond now',ai_reason:'Location-specific complaint. Moderate engagement, requires prompt response.',body:"Went into the Boulder location on Saturday. My wife asked a question and the budtender was incredibly dismissive. We left without buying anything.",suggested_response:"We're so sorry to hear this — that behavior doesn't reflect our team's values. Could you DM us more details?",created_at:new Date(Date.now()-38*60000).toISOString(),url:'https://reddit.com'},
+    {id:3,brand:'fluent',bname:'Fluent',urgency_score:7,subreddit:'r/Florida',title:'Fluent raised prices 20% with zero notice — getting ridiculous',sentiment:'Negative',status:'new',signal_type:'Complaint',action:'Respond now',ai_reason:'Pricing complaint gaining traction. 12 upvotes in under an hour.',body:'Was a loyal Fluent customer for two years. All my regulars were suddenly 15-20% more expensive. No email, no heads up.',suggested_response:"Thanks for being a loyal customer — we'd love to share more context. Can you DM us your location?",created_at:new Date(Date.now()-60*60000).toISOString(),url:'https://reddit.com'},
+    {id:4,brand:'fluent',bname:'Fluent',urgency_score:5,subreddit:'r/CBD',title:'Does Fluent Medical in Tampa accept insurance or payment plans?',sentiment:'Neutral',status:'new',signal_type:'Question',action:'Respond soon',ai_reason:'Unanswered question. Good opportunity for a helpful, visible response.',body:'New to medical cannabis and thinking about trying Fluent in Tampa. Does anyone know if they accept insurance or HSA cards?',suggested_response:"Great question! Fluent accepts most major debit cards and cash. We don't currently accept insurance, but we do have a first-time patient discount.",created_at:new Date(Date.now()-2*3600000).toISOString(),url:'https://reddit.com'},
+    {id:5,brand:'eaze',bname:'Eaze',urgency_score:4,subreddit:'r/cannabis',title:'Eaze vs Weedmaps delivery — which is actually worth it in 2026?',sentiment:'Mixed',status:'reviewed',signal_type:'Comparison',action:'Monitor',ai_reason:'Comparison thread. Good brand visibility but no urgent response needed.',body:'Been using both services on and off. Eaze has the better app and faster delivery in my experience.',suggested_response:null,created_at:new Date(Date.now()-3*3600000).toISOString(),url:'https://reddit.com'},
+    {id:6,brand:'eaze',bname:'Eaze',urgency_score:2,subreddit:'r/trees',title:'First time using Eaze — honestly impressed, arrived in 45 min',sentiment:'Positive',status:'responded',signal_type:'Praise',action:'Done',ai_reason:'Positive first-time review. Response logged.',body:'Was skeptical but gave Eaze a shot. Super clean app, tracker worked perfectly, driver was cool.',suggested_response:null,created_at:new Date(Date.now()-5*3600000).toISOString(),url:'https://reddit.com'},
+  ];
+}
+
+function urgClass(score){return score>=7?'urg-hi':score>=4?'urg-md':'urg-lo';}
+function bdotClass(brand){return brand==='eaze'?'bdot-eaze':brand==='green_dragon'?'bdot-gd':'bdot-fl';}
+function statusPillStyle(status){
+  if(status==='new')return'background:var(--dang-bg);color:var(--dang-fg);';
+  if(status==='reviewed')return'background:var(--warn-bg);color:var(--warn-fg);';
+  return'background:var(--succ-bg);color:var(--succ-fg);';
+}
+function timeAgo(iso){
+  const m=Math.round((Date.now()-new Date(iso))/60000);
+  if(m<60)return m+'min ago';
+  const h=Math.round(m/60);
+  if(h<24)return h+'hr ago';
+  return Math.round(h/24)+'d ago';
+}
+
+function renderRedditTab(){
+  const R=S.reddit;
+  const sigs=R.signals.filter(s=>{
+    const bOk=R.activeBrand==='all'||s.brand===R.activeBrand;
+    const stOk=R.activeStatus==='all'||s.status===R.activeStatus;
+    return bOk&&stOk;
+  });
+
+  // Stats
+  const total=R.signals.length;
+  const urgent=R.signals.filter(s=>s.urgency_score>=7).length;
+  const awaiting=R.signals.filter(s=>s.status==='new'||s.status==='reviewed').length;
+  const responded=R.signals.filter(s=>s.status==='responded').length;
+
+  // Scanner bar
+  const lastCycle=R.scanner?.last_cycle?timeAgo(R.scanner.last_cycle):'—';
+  const nextMins=R.scanner?.next_in_minutes?R.scanner.next_in_minutes+'min':'—';
+  const scannerBar=`<div class="scanner-bar">
+    <div class="pulse"></div>
+    <span>Scanner active &mdash; 22 feeds &mdash; last cycle <strong>${lastCycle}</strong> &mdash; next in <strong>${nextMins}</strong></span>
+    <span style="margin-left:auto;cursor:pointer;color:var(--yellow);font-size:11px;" onclick="runScannerNow()">Run now &rarr;</span>
+  </div>`;
+
+  // Stats row
+  const statsRow=`<div class="reddit-stats">
+    <div class="reddit-stat"><div class="reddit-stat-label">New signals today</div><div class="reddit-stat-val">${total}</div></div>
+    <div class="reddit-stat"><div class="reddit-stat-label">Urgent (7+)</div><div class="reddit-stat-val" style="color:var(--dang-fg);">${urgent}</div></div>
+    <div class="reddit-stat"><div class="reddit-stat-label">Awaiting response</div><div class="reddit-stat-val" style="color:var(--warn-fg);">${awaiting}</div></div>
+    <div class="reddit-stat"><div class="reddit-stat-label">Responded</div><div class="reddit-stat-val" style="color:var(--succ-fg);">${responded}</div></div>
+  </div>`;
+
+  // Filters
+  const brandPills=[
+    {label:'All',val:'all',cls:''},
+    {label:'Eaze',val:'eaze',cls:''},
+    {label:'Green Dragon',val:'green_dragon',cls:''},
+    {label:'Fluent',val:'fluent',cls:''},
+  ].map(p=>`<button class="pill${R.activeBrand===p.val?' on':''}" onclick="setRedditBrand('${p.val}')">${p.label}</button>`).join('');
+  const statusPills=['all','new','reviewed','responded'].map(s=>
+    `<button class="pill${R.activeStatus===s?' on':''}" onclick="setRedditStatus('${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`
+  ).join('');
+  const filters=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">${brandPills}<div style="width:1px;height:18px;background:var(--brd);flex-shrink:0;"></div>${statusPills}</div>`;
+
+  // Signal rows
+  const rows=sigs.length===0?`<div style="text-align:center;padding:48px;color:var(--txt2);font-size:13px;">No signals match this filter.</div>`
+  :sigs.map(s=>`
+    <div class="sig-row${R.openId===s.id?' open':''}" onclick="toggleSignal(${s.id})">
+      <div class="sig-head">
+        <div class="urg-badge ${urgClass(s.urgency_score)}">${s.urgency_score}</div>
+        <div class="sig-mid">
+          <div class="sig-title">${s.title}</div>
+          <div class="sig-meta">
+            <span class="brand-dot ${bdotClass(s.brand)}"></span>
+            <span>${s.bname}</span>
+            <span>·</span>
+            <span>${s.subreddit||s.sub}</span>
+            <span>·</span>
+            <span>${timeAgo(s.created_at)}</span>
+            <span>·</span>
+            <span>${s.signal_type}</span>
+          </div>
+        </div>
+        <div class="sig-right">
+          <span style="font-size:11px;color:var(--txt3);">${s.sentiment}</span>
+          <span class="badge" style="${statusPillStyle(s.status)}">${s.status}</span>
+          <span class="sig-chevron">⌄</span>
+        </div>
+      </div>
+      <div class="sig-detail">
+        <div class="sig-body-quote">"${s.body}"</div>
+        <div class="sig-detail-grid">
+          <div class="sig-detail-cell"><div class="sig-detail-label">Signal type</div><div class="sig-detail-val">${s.signal_type}</div></div>
+          <div class="sig-detail-cell"><div class="sig-detail-label">Urgency</div><div class="sig-detail-val">${s.urgency_score} / 10</div></div>
+          <div class="sig-detail-cell"><div class="sig-detail-label">Suggested action</div><div class="sig-detail-val">${s.action||'—'}</div></div>
+          <div class="sig-detail-cell"><div class="sig-detail-label">Source</div><div class="sig-detail-val">${s.subreddit||s.sub||'—'}</div></div>
+        </div>
+        ${s.ai_reason?`<div class="ai-reasoning"><div class="ai-reasoning-label">⚡ AI reasoning</div><div class="ai-reasoning-text">${s.ai_reason}</div></div>`:''}
+        ${s.suggested_response?`<div style="margin-bottom:12px;"><div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Suggested response</div><div class="sig-body-quote" style="border-left-color:var(--yellow);color:var(--txt);">${s.suggested_response}</div></div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${s.status!=='responded'?`<button class="btn p" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();draftRedditResponse(${s.id})">Draft response</button>`:''}
+          ${s.status==='new'?`<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();updateSignalStatus(${s.id},'reviewed')">Mark reviewed</button>`:''}
+          <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();window.open('${s.url||'https://reddit.com'}','_blank')">View on Reddit</button>
+          ${s.status!=='responded'?`<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();updateSignalStatus(${s.id},'dismissed')">Dismiss</button>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+
+  return`<div>
+    <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Reddit Signals</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:20px;">Brand monitoring across 22 subreddits and keyword feeds.</div>
+    ${R.loading?'<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto;"></div></div>':`${scannerBar}${statsRow}${filters}<div>${rows}</div>`}
+  </div>`;
+}
+
+// ── Reddit action handlers ────────────────────────────────────────────────
+window.toggleSignal=id=>{
+  S.reddit.openId=S.reddit.openId===id?null:id;render();
+};
+window.setRedditBrand=brand=>{
+  S.reddit.activeBrand=brand;S.reddit.openId=null;
+  if(!isDemo())loadRedditSignals();else render();
+};
+window.setRedditStatus=status=>{
+  S.reddit.activeStatus=status;S.reddit.openId=null;
+  if(!isDemo())loadRedditSignals();else render();
+};
+window.updateSignalStatus=async(id,status)=>{
+  const sig=S.reddit.signals.find(s=>s.id===id);
+  if(sig)sig.status=status;
+  render();
+  if(!isDemo())fetch('/api/reddit-signals/'+id,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({status})}).catch(()=>{});
+};
+window.draftRedditResponse=id=>{
+  const sig=S.reddit.signals.find(s=>s.id===id);
+  if(!sig)return;
+  // Switch to Reviews tab with pre-filled context — or open AI modal
+  alert('AI draft coming in Phase 2 — use the suggested response above for now.');
+};
+window.runScannerNow=async()=>{
+  if(isDemo()){alert('Scanner runs automatically every 30 min in production.');return;}
+  await fetch('/api/reddit-signals/scan',{method:'POST',headers:authHeaders()}).catch(()=>{});
+  setTimeout(()=>loadRedditSignals(),2000);
+};
+
 function renderBrandGuide(){
   const name=BRAND.companyName||'';
   const previewLogin=name?`Welcome to ${name}\u2019s RepuPilot`:'Welcome to RepuPilot';
@@ -1200,18 +1403,18 @@ function render(){
     </div>
   </div>
   <div class="tabs">
-    ${[['listings','Listings','ti-folder'],['dashboard','Dashboard','ti-home'],['reviews','Reviews','ti-message-dots'],['reports','Reports','ti-chart-bar'],['templates','Templates','ti-template'],['ai-voice','Brand Voice','ti-sparkles'],['brand','Brand Guide','ti-paint'],['settings','Settings','ti-settings']].map(([v,l,ic])=>
+    ${[['listings','Listings','ti-folder'],['dashboard','Dashboard','ti-home'],['reviews','Reviews','ti-message-dots'],['reports','Reports','ti-chart-bar'],['templates','Templates','ti-template'],['ai-voice','Brand Voice','ti-sparkles'],['brand','Brand Guide','ti-paint'],['reddit','Reddit','ti-brand-reddit'],['settings','Settings','ti-settings']].map(([v,l,ic])=>
       `<button class="tab${S.tab===v?' on':''}" onclick="setTab('${v}')"><i class="ti ${ic}" style="font-size:14px;margin-right:5px;"></i>${l}${v==='reviews'&&act?` <span style="background:var(--warn-fg);color:var(--bg);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:3px;">${act}</span>`:''}</button>`
     ).join('')}
   </div>
   <div id="tab-content">
-    ${S.tab==='listings'?`<div id="listings-view"><div class="listings-layout">${renderListingsInner()}</div></div>`:S.tab==='dashboard'?renderDashboard():S.tab==='reviews'?renderReviews():S.tab==='reports'?`<div id="reports-view">${renderReportsInner()}</div>`:S.tab==='templates'?renderTemplates():S.tab==='ai-voice'?renderBrandVoice():S.tab==='settings'?'<div id="settings-view">'+renderSettingsInner()+'</div>':renderBrandGuide()}
+    ${S.tab==='listings'?`<div id="listings-view"><div class="listings-layout">${renderListingsInner()}</div></div>`:S.tab==='dashboard'?renderDashboard():S.tab==='reviews'?renderReviews():S.tab==='reports'?`<div id="reports-view">${renderReportsInner()}</div>`:S.tab==='templates'?renderTemplates():S.tab==='ai-voice'?renderBrandVoice():S.tab==='settings'?'<div id="settings-view">'+renderSettingsInner()+'</div>':S.tab==='reddit'?renderRedditTab():renderBrandGuide()}
   </div>`;
   requestAnimationFrame(()=>window.scrollTo(0,scrollY));
 }
 
 // ── Action handlers ───────────────────────────────────────────────────────
-window.setTab=v=>{S.tab=v;if(v==='settings'&&!S.users&&!S.usersLoading)loadUsers();render();};
+window.setTab=v=>{S.tab=v;if(v==='settings'&&!S.users&&!S.usersLoading)loadUsers();if(v==='reddit')loadRedditSignals();render();};
 // ── Settings action handlers ─────────────────────────────────────────────
 async function loadUsers(){
   S.usersLoading=true;renderSettings();
