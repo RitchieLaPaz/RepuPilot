@@ -11,6 +11,7 @@ const { migrate } = require('./db');
 
 // Routes
 const authRoutes      = require('./routes/auth');
+const redditRoutes    = require('./routes/reddit');
 const locationRoutes  = require('./routes/locations');
 const reviewRoutes    = require('./routes/reviews');
 const folderRoutes    = require('./routes/folders');
@@ -77,6 +78,16 @@ app.use('/api/auth',      authRoutes);
 app.use('/api/folders',   folderRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/reviews',   reviewRoutes);
+app.use('/api/reddit-signals', redditRoutes);
+
+// ── Reddit scanner webhook ───────────────────────────────────────────────
+app.post('/webhooks/reddit-signal', (req, res) => {
+  const key = req.headers['x-scanner-key'];
+  if (key !== process.env.SCANNER_WEBHOOK_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  const signal = req.body;
+  logger.info('Reddit webhook received', { brand: signal.brand, score: signal.urgency_score });
+  res.json({ ok: true });
+});
 
 // ── SPA fallback — all non-API routes serve index.html ───────────────────
 app.get('*', (req, res) => {
