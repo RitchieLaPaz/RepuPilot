@@ -491,7 +491,7 @@ const TC={brand:{label:'Brand',icon:'ti-building-store',bg:'var(--purple-bg)',fg
 function authHeaders(){const t=sessionStorage.getItem('rp_token');return t?{'Content-Type':'application/json','Authorization':'Bearer '+t}:{'Content-Type':'application/json'};}
 // ── Theme toggle ─────────────────────────────────────────────────────────
 function getTheme(){return localStorage.getItem('rp_theme')||'light';}
-function setTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('rp_theme',t);renderThemeBtn();}
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);localStorage.setItem('rp_theme',t);if(typeof render==='function')render();}
 function toggleTheme(){setTheme(getTheme()==='dark'?'light':'dark');}
 function renderThemeBtn(){
   const btn=document.getElementById('theme-toggle');
