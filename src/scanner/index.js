@@ -6,8 +6,9 @@ const logger = require('../lib/logger');
 
 async function startScanner() {
   logger.info('Reddit scanner initializing...');
+  // Small delay to ensure DB migration is fully committed
+  await new Promise(r => setTimeout(r, 3000));
   await seedSeenCache();
-  // First cycle after 30s delay (let app fully boot first)
   setTimeout(runCycle, 30 * 1000);
   logger.info('Reddit scanner scheduled');
 }
