@@ -141,3 +141,37 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
+
+-- ── Reddit Signals ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS reddit_signals (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  post_id          TEXT UNIQUE NOT NULL,
+  brand            TEXT NOT NULL,
+  bname            TEXT NOT NULL,
+  title            TEXT NOT NULL,
+  body             TEXT,
+  url              TEXT,
+  subreddit        TEXT,
+  sentiment        TEXT,
+  urgency_score    INTEGER DEFAULT 5,
+  signal_type      TEXT,
+  action           TEXT,
+  ai_reason        TEXT,
+  suggested_response TEXT,
+  status           TEXT NOT NULL DEFAULT 'new',
+  responded_by     UUID REFERENCES users(id),
+  response_text    TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_reddit_signals_brand  ON reddit_signals(brand);
+CREATE INDEX IF NOT EXISTS idx_reddit_signals_status ON reddit_signals(status);
+CREATE INDEX IF NOT EXISTS idx_reddit_signals_urgency ON reddit_signals(urgency_score DESC);
+
+-- ── Scanner Status ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS scanner_status (
+  id               INTEGER PRIMARY KEY DEFAULT 1,
+  last_cycle       TIMESTAMPTZ,
+  next_in_minutes  INTEGER DEFAULT 30,
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
