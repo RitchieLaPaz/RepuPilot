@@ -103,6 +103,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+const { startScanner } = require('./scanner');
+
 // ── Start ─────────────────────────────────────────────────────────────────
 const start = async () => {
   try {
@@ -110,6 +112,7 @@ const start = async () => {
     await migrate();
 
     app.listen(config.port, () => {
+      startScanner();
       logger.info(`RepuPilot API running`, { port: config.port, env: config.env });
     });
   } catch (err) {
