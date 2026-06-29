@@ -1,6 +1,6 @@
 /**
  * Staggered RSS polling scheduler
- * One feed request every 15s → full cycle ~5.5 min → repeats every 30 min
+ * One feed request every 15s → full cycle ~7.25 min → repeats every 2 hours
  */
 const Parser  = require('rss-parser');
 const feeds   = require('./feeds');
@@ -9,8 +9,8 @@ const db      = require('../db');
 const logger  = require('../lib/logger');
 
 const parser  = new Parser({ timeout: 10000 });
-const STAGGER = 15 * 1000;   // 15s between feeds
-const CYCLE   = 30 * 60 * 1000; // 30min between full cycles
+const STAGGER = 15 * 1000;        // 15s between feeds
+const CYCLE   = 2 * 60 * 60 * 1000; // 2hrs between full cycles
 
 // In-memory seen cache (seeded from DB on boot)
 const seen = new Set();
@@ -100,8 +100,8 @@ async function runCycle() {
   try {
     await db.query(
       `INSERT INTO scanner_status (id, last_cycle, next_in_minutes)
-       VALUES (1, NOW(), 30)
-       ON CONFLICT (id) DO UPDATE SET last_cycle=NOW(), next_in_minutes=30`
+       VALUES (1, NOW(), 120)
+       ON CONFLICT (id) DO UPDATE SET last_cycle=NOW(), next_in_minutes=120`
     );
   } catch (err) { /* table may not exist yet */ }
 
