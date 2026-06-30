@@ -1038,7 +1038,7 @@ function renderRedditTab(){
   const nextMins=R.scanner?.next_in_minutes?R.scanner.next_in_minutes+'min':'—';
   const scannerBar=`<div class="scanner-bar">
     <div class="pulse"></div>
-    <span>Scanner active &mdash; 22 feeds &mdash; last cycle <strong>${lastCycle}</strong> &mdash; next in <strong>${nextMins}</strong></span>
+    <span>Scanner active &mdash; 29 feeds &mdash; last cycle <strong>${lastCycle}</strong> &mdash; next in <strong>${nextMins}</strong></span>
     <span style="margin-left:auto;cursor:pointer;color:var(--yellow);font-size:11px;" onclick="runScannerNow()">Run now &rarr;</span>
   </div>`;
 
@@ -1065,7 +1065,7 @@ function renderRedditTab(){
   // Signal rows
   const rows=sigs.length===0?`<div style="text-align:center;padding:48px;color:var(--txt2);font-size:13px;">No signals match this filter.</div>`
   :sigs.map(s=>`
-    <div class="sig-row${R.openId===s.id?' open':''}" onclick="toggleSignal(${s.id})">
+    <div class="sig-row${String(R.openId)===String(s.id)?' open':''}" onclick="toggleSignal('${s.id}')">
       <div class="sig-head">
         <div class="urg-badge ${urgClass(s.urgency_score)}">${s.urgency_score}</div>
         <div class="sig-mid">
@@ -1098,24 +1098,24 @@ function renderRedditTab(){
         ${s.ai_reason?`<div class="ai-reasoning"><div class="ai-reasoning-label">⚡ AI reasoning</div><div class="ai-reasoning-text">${s.ai_reason}</div></div>`:''}
         ${s.suggested_response?`<div style="margin-bottom:12px;"><div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Suggested response</div><div class="sig-body-quote" style="border-left-color:var(--yellow);color:var(--txt);">${s.suggested_response}</div></div>`:''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${s.status!=='responded'?`<button class="btn p" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();draftRedditResponse(${s.id})">Draft response</button>`:''}
-          ${s.status==='new'?`<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();updateSignalStatus(${s.id},'reviewed')">Mark reviewed</button>`:''}
+          ${s.status!=='responded'?`<button class="btn p" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();draftRedditResponse('${s.id}')">Draft response</button>`:''}
+          ${s.status==='new'?`<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();updateSignalStatus('${s.id}','reviewed')">Mark reviewed</button>`:''}
           <button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();window.open('${s.url||'https://reddit.com'}','_blank')">View on Reddit</button>
-          ${s.status!=='responded'?`<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();updateSignalStatus(${s.id},'dismissed')">Dismiss</button>`:''}
+          ${s.status!=='responded'?`<button class="btn" style="font-size:12px;padding:6px 14px;" onclick="event.stopPropagation();updateSignalStatus('${s.id}','dismissed')">Dismiss</button>`:''}
         </div>
       </div>
     </div>`).join('');
 
   return`<div>
     <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Reddit Signals</div>
-    <div style="font-size:13px;color:var(--txt2);margin-bottom:20px;">Brand monitoring across 22 subreddits and keyword feeds.</div>
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:20px;">Brand monitoring across 29 subreddits and keyword feeds.</div>
     ${R.loading?'<div style="text-align:center;padding:40px;"><div class="spinner" style="margin:0 auto;"></div></div>':`${scannerBar}${statsRow}${filters}<div>${rows}</div>`}
   </div>`;
 }
 
 // ── Reddit action handlers ────────────────────────────────────────────────
 window.toggleSignal=id=>{
-  S.reddit.openId=S.reddit.openId===id?null:id;render();
+  S.reddit.openId=String(S.reddit.openId)===String(id)?null:id;render();
 };
 window.setRedditBrand=brand=>{
   S.reddit.activeBrand=brand;S.reddit.openId=null;
