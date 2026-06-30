@@ -1,27 +1,27 @@
 /**
- * RSS polling scheduler — Render Cron Job version
- * Runs ONE full cycle across all feeds, then returns.
- * Scheduling is handled by Render (every 2 hours via render.yaml).
+ * Staggered RSS polling scheduler
+ * One feed request every 15s → full cycle ~7.25 min → repeats every 2 hours
  */
 const Parser  = require('rss-parser');
 const feeds   = require('./feeds');
 const { classify } = require('./classifier');
 const db      = require('../db');
-const log     = require('../logger');
+const logger  = require('../lib/logger');
 
-const parser  = new Parser({ timeout: 15000 });
-const STAGGER = 20 * 1000; // 20s between feeds
+const parser  = new Parser({ timeout: 10000 });
+const STAGGER = 15 * 1000;        // 15s between feeds
+const CYCLE   = 2 * 60 * 60 * 1000; // 2hrs between full cycles
 
-// In-memory seen cache
+// In-memory seen cache (seeded from DB on boot)
 const seen = new Set();
 
 async function seedSeenCache() {
   try {
     const { rows } = await db.query(`SELECT post_id FROM reddit_signals`);
     rows.forEach(r => seen.add(r.post_id));
-    log('Seen cache seeded', { count: seen.size });
+    logger.info('Reddit seen cache seeded', { count: seen.size });
   } catch (err) {
-    log('Could not seed seen cache', { err: err.message });
+    logger.warn('Could not seed seen cache', { err: err.message });
   }
 }
 
@@ -39,8 +39,9 @@ async function processPost(post, feed) {
     subreddit: feed.id,
   });
 
-  if (!result) return;
+  if (!result) return; // Not relevant
 
+  // Persist to DB
   try {
     await db.query(
       `INSERT INTO reddit_signals
@@ -53,14 +54,14 @@ async function processPost(post, feed) {
        result.action, result.ai_reason, result.suggested_response, result.status, postedAt]
     );
 
-    log('Signal saved', { brand: result.brand, score: result.urgency_score, title: result.title.slice(0, 50) });
+    logger.info('Signal saved', { brand: result.brand, score: result.urgency_score, title: result.title.slice(0, 50) });
 
     // Webhook for high-urgency signals
     if (result.urgency_score >= 7) {
-      await sendWebhook({ ...result, post_id: postId });
+      sendWebhook({ ...result, post_id: postId });
     }
   } catch (err) {
-    log('Signal persist error', { err: err.message });
+    logger.error('Signal persist error', { err: err.message });
   }
 }
 
@@ -75,45 +76,38 @@ async function sendWebhook(signal) {
       body: JSON.stringify({ source: 'reddit', ...signal }),
     });
   } catch (err) {
-    log('Webhook delivery failed', { err: err.message });
+    logger.warn('Webhook delivery failed', { err: err.message });
   }
 }
 
-async function processFeed(feed, retrying = false) {
+async function processFeed(feed) {
   try {
     const parsed = await parser.parseURL(feed.url());
     const posts  = parsed.items || [];
-    let processed = 0;
     for (const post of posts.slice(0, 10)) {
       await processPost(post, feed);
-      processed++;
     }
-    log('Feed processed', { feed: feed.id, posts: processed });
   } catch (err) {
-    const is429 = err.message?.includes('429');
-    if (is429 && !retrying) {
-      log('Feed rate limited — retrying in 20s', { feed: feed.id });
-      await new Promise(r => setTimeout(r, 20000));
-      return processFeed(feed, true);
-    }
-    log('Feed fetch failed', { feed: feed.id, err: err.message });
+    logger.warn('Feed fetch failed', { feed: feed.id, err: err.message });
   }
 }
 
-// Run ONE full cycle — called by Render cron job
-async function runOnce() {
-  log('Cycle starting', { feeds: feeds.length });
+let cycleTimeout = null;
+
+async function runCycle() {
+  logger.info('Reddit scanner cycle starting', { feeds: feeds.length });
   const start = Date.now();
 
-  // Update scanner status in Railway DB
+  // Update scanner status
   try {
     await db.query(
       `INSERT INTO scanner_status (id, last_cycle, next_in_minutes)
        VALUES (1, NOW(), 120)
        ON CONFLICT (id) DO UPDATE SET last_cycle=NOW(), next_in_minutes=120`
     );
-  } catch (err) { /* table may not exist */ }
+  } catch (err) { /* table may not exist yet */ }
 
+  // Staggered feed processing
   for (let i = 0; i < feeds.length; i++) {
     await processFeed(feeds[i]);
     if (i < feeds.length - 1) {
@@ -122,7 +116,10 @@ async function runOnce() {
   }
 
   const elapsed = Math.round((Date.now() - start) / 1000);
-  log('Cycle complete', { elapsed: `${elapsed}s` });
+  logger.info('Reddit scanner cycle complete', { elapsed: `${elapsed}s` });
+
+  // Schedule next cycle
+  cycleTimeout = setTimeout(runCycle, CYCLE);
 }
 
-module.exports = { runOnce, seedSeenCache };
+module.exports = { runCycle, seedSeenCache };
