@@ -1076,7 +1076,7 @@ function renderRedditTab(){
             <span>·</span>
             <span>${s.subreddit||s.sub}</span>
             <span>·</span>
-            <span>${timeAgo(s.created_at)}</span>
+            <span>${timeAgo(s.posted_at||s.created_at)}</span>
             <span>·</span>
             <span>${s.signal_type}</span>
           </div>
