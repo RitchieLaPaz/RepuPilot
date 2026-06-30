@@ -1,6 +1,7 @@
 /**
- * RSS feed registry — 29 feeds
+ * RSS feed registry — 28 feeds
  * Subreddits + brand keyword searches for Eaze, Green Dragon, Fluent
+ * (r/Eaze removed — subreddit does not exist, returns 404)
  */
 const BASE = 'https://www.reddit.com';
 const token = () => {
@@ -10,9 +11,6 @@ const token = () => {
 };
 
 module.exports = [
-  // ── Brand-specific subreddit (Critical priority) ──────────────────────
-  { id: 'r_eaze',            url: () => `${BASE}/r/Eaze/new.rss${token()}`,            type: 'subreddit', brand: 'eaze' },
-
   // ── General cannabis subreddits ────────────────────────────────────────
   { id: 'r_weed',            url: () => `${BASE}/r/weed/new.rss${token()}`,            type: 'subreddit' },
   { id: 'r_trees',           url: () => `${BASE}/r/trees/new.rss${token()}`,           type: 'subreddit' },
