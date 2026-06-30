@@ -161,6 +161,7 @@ CREATE TABLE IF NOT EXISTS reddit_signals (
   status           TEXT NOT NULL DEFAULT 'new',
   responded_by     UUID REFERENCES users(id),
   response_text    TEXT,
+  posted_at        TIMESTAMPTZ,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
