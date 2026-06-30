@@ -30,6 +30,8 @@ async function processPost(post, feed) {
   if (!postId || seen.has(postId)) return;
   seen.add(postId);
 
+  const postedAt = post.isoDate || post.pubDate || null;
+
   const result = await classify({
     title:     post.title || '',
     body:      post.contentSnippet || post.content || '',
@@ -44,12 +46,12 @@ async function processPost(post, feed) {
     await db.query(
       `INSERT INTO reddit_signals
         (post_id, brand, bname, title, body, url, subreddit, sentiment, urgency_score,
-         signal_type, action, ai_reason, suggested_response, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         signal_type, action, ai_reason, suggested_response, status, posted_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        ON CONFLICT (post_id) DO NOTHING`,
       [postId, result.brand, result.bname, result.title, result.body, result.url,
        result.subreddit, result.sentiment, result.urgency_score, result.signal_type,
-       result.action, result.ai_reason, result.suggested_response, result.status]
+       result.action, result.ai_reason, result.suggested_response, result.status, postedAt]
     );
 
     logger.info('Signal saved', { brand: result.brand, score: result.urgency_score, title: result.title.slice(0, 50) });
