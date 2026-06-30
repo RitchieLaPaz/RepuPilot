@@ -379,7 +379,7 @@ function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msal
 const S={
   tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
-  users:null,usersLoading:false,invites:null,reddit:{signals:[],loading:false,activeBrand:'all',activeStatus:'all',openId:null,scanner:null},userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
+  users:null,usersLoading:false,invites:null,reddit:{signals:[],loading:false,activeBrand:'all',activeStatus:'all',sortBy:'urgency',openId:null,scanner:null},userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
     {id:1,pf:'google',nm:'Sarah M.',loc:'Eaze West Hollywood',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
     {id:2,pf:'yelp',nm:'James K.',loc:'Green Dragon Cherry Creek',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
@@ -983,6 +983,7 @@ async function loadRedditSignals(){
     const params=new URLSearchParams();
     if(S.reddit.activeBrand!=='all')params.set('brand',S.reddit.activeBrand);
     if(S.reddit.activeStatus!=='all')params.set('status',S.reddit.activeStatus);
+    params.set('sort',S.reddit.sortBy||'urgency');
     const [sr,sc]=await Promise.all([
       fetch('/api/reddit-signals?'+params,{headers:authHeaders()}),
       fetch('/api/reddit-signals/scanner-status',{headers:authHeaders()})
@@ -1065,7 +1066,15 @@ function renderRedditTab(){
   const statusPills=['all','new','reviewed','responded'].map(s=>
     `<button class="pill${R.activeStatus===s?' on':''}" onclick="setRedditStatus('${s}')">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`
   ).join('');
-  const filters=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">${brandPills}<div style="width:1px;height:18px;background:var(--brd);flex-shrink:0;"></div>${statusPills}</div>`;
+  const filters=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;justify-content:space-between;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${brandPills}<div style="width:1px;height:18px;background:var(--brd);flex-shrink:0;"></div>${statusPills}</div>
+    <select onchange="setRedditSort(this.value)" style="font-size:12px;padding:5px 10px;border-radius:20px;border:0.5px solid var(--brd2);background:var(--bg);color:var(--txt);cursor:pointer;">
+      <option value="urgency"${R.sortBy==='urgency'?' selected':''}>Sort: Urgency</option>
+      <option value="newest"${R.sortBy==='newest'?' selected':''}>Sort: Newest</option>
+      <option value="oldest"${R.sortBy==='oldest'?' selected':''}>Sort: Oldest</option>
+      <option value="brand"${R.sortBy==='brand'?' selected':''}>Sort: Brand</option>
+    </select>
+  </div>`;
 
   // Signal rows
   const rows=sigs.length===0?`<div style="text-align:center;padding:48px;color:var(--txt2);font-size:13px;">No signals match this filter.</div>`
@@ -1129,6 +1138,19 @@ window.setRedditBrand=brand=>{
 window.setRedditStatus=status=>{
   S.reddit.activeStatus=status;S.reddit.openId=null;
   if(!isDemo())loadRedditSignals();else render();
+};
+window.setRedditSort=sort=>{
+  S.reddit.sortBy=sort;
+  if(!isDemo()){loadRedditSignals();return;}
+  // Demo mode — sort client-side
+  const sorters={
+    newest:  (a,b)=>new Date(b.posted_at||b.created_at)-new Date(a.posted_at||a.created_at),
+    oldest:  (a,b)=>new Date(a.posted_at||a.created_at)-new Date(b.posted_at||b.created_at),
+    urgency: (a,b)=>b.urgency_score-a.urgency_score||new Date(b.created_at)-new Date(a.created_at),
+    brand:   (a,b)=>a.brand.localeCompare(b.brand)||new Date(b.created_at)-new Date(a.created_at),
+  };
+  S.reddit.signals=[...S.reddit.signals].sort(sorters[sort]||sorters.urgency);
+  render();
 };
 window.updateSignalStatus=async(id,status)=>{
   const sig=S.reddit.signals.find(s=>s.id===id);
