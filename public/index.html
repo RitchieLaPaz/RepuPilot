@@ -1016,7 +1016,12 @@ function timeAgo(iso){
   if(m<60)return m+'min ago';
   const h=Math.round(m/60);
   if(h<24)return h+'hr ago';
-  return Math.round(h/24)+'d ago';
+  const d=Math.round(h/24);
+  if(d<30)return d+'d ago';
+  const mo=Math.round(d/30);
+  if(mo<12)return mo+'mo ago';
+  const y=Math.round(mo/12);
+  return y+'y ago';
 }
 
 function renderRedditTab(){
