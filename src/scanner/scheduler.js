@@ -9,7 +9,7 @@ const db      = require('../db');
 const logger  = require('../lib/logger');
 
 const parser  = new Parser({ timeout: 10000 });
-const STAGGER = 15 * 1000;        // 15s between feeds
+const STAGGER = 20 * 1000;        // 20s between feeds
 const CYCLE   = 2 * 60 * 60 * 1000; // 2hrs between full cycles
 
 // In-memory seen cache (seeded from DB on boot)
@@ -80,7 +80,7 @@ async function sendWebhook(signal) {
   }
 }
 
-async function processFeed(feed) {
+async function processFeed(feed, retrying = false) {
   try {
     const parsed = await parser.parseURL(feed.url());
     const posts  = parsed.items || [];
@@ -88,6 +88,12 @@ async function processFeed(feed) {
       await processPost(post, feed);
     }
   } catch (err) {
+    const is429 = err.message?.includes('429');
+    if (is429 && !retrying) {
+      logger.warn('Feed rate limited — retrying in 20s', { feed: feed.id });
+      await new Promise(r => setTimeout(r, 20000));
+      return processFeed(feed, true);
+    }
     logger.warn('Feed fetch failed', { feed: feed.id, err: err.message });
   }
 }
