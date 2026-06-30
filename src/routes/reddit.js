@@ -11,12 +11,19 @@ router.use(auth);
 // ── List signals ──────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const { brand, status } = req.query;
+    const { brand, status, sort } = req.query;
     let q = `SELECT * FROM reddit_signals WHERE 1=1`;
     const params = [];
     if (brand)  { params.push(brand);  q += ` AND brand = $${params.length}`; }
     if (status) { params.push(status); q += ` AND status = $${params.length}`; }
-    q += ` ORDER BY urgency_score DESC, created_at DESC LIMIT 100`;
+
+    const sortMap = {
+      newest:  'COALESCE(posted_at, created_at) DESC',
+      oldest:  'COALESCE(posted_at, created_at) ASC',
+      urgency: 'urgency_score DESC, COALESCE(posted_at, created_at) DESC',
+      brand:   'brand ASC, COALESCE(posted_at, created_at) DESC',
+    };
+    q += ` ORDER BY ${sortMap[sort] || sortMap.urgency} LIMIT 100`;
     const { rows } = await db.query(q, params);
     res.json(rows);
   } catch (err) {
