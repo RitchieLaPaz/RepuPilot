@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
       urgency: 'urgency_score DESC, COALESCE(posted_at, created_at) DESC',
       brand:   'brand ASC, COALESCE(posted_at, created_at) DESC',
     };
-    q += ` ORDER BY ${sortMap[sort] || sortMap.urgency} LIMIT 100`;
+    q += ` ORDER BY ${sortMap[sort] || sortMap.newest} LIMIT 100`;
     const { rows } = await db.query(q, params);
     res.json(rows);
   } catch (err) {
