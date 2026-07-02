@@ -380,7 +380,7 @@ function signOut(){currentUser=null;sessionStorage.removeItem('rh_user');if(msal
 const S={
   tab:'listings',pf:'all',st:'all',gen:{},sel:{},refining:{},
   reportTab:'executive',reportPeriod:'month',reportPlatform:'all',
-  users:null,usersLoading:false,invites:null,reddit:{signals:[],loading:false,activeBrand:'all',activeStatus:'all',sortBy:'urgency',openId:null,scanner:null},userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
+  users:null,usersLoading:false,invites:null,reddit:{signals:[],loading:false,activeBrand:'all',activeStatus:'all',sortBy:'newest',openId:null,scanner:null},userMenuOpen:false,pwForm:{current:'',next:'',confirm:'',loading:false,error:'',ok:false},resetPw:{uid:null,pw:'',loading:false,error:'',ok:false},newUser:{name:'',email:'',password:'',role:'member'},invite:{name:'',email:'',role:'member',sending:false,sent:false,error:''},
   reviews:[
     {id:1,pf:'google',nm:'Sarah M.',loc:'Eaze West Hollywood',rt:5,tx:"Best experience in years! The team was incredibly helpful and everything went smoothly.",dt:'Jun 15',st:'pending',draft:null,reply:null},
     {id:2,pf:'yelp',nm:'James K.',loc:'Green Dragon Cherry Creek',rt:5,tx:"Absolutely love this place. Consistent quality every time. Staff always goes above and beyond.",dt:'Jun 14',st:'pending',draft:null,reply:null},
